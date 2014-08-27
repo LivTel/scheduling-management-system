@@ -1,0 +1,12 @@
+#!/bin/csh
+
+# Starts up a ScheduleDespatcher and ExecutionUpdateManager
+
+source /opt/ngat/etc/cshrc
+
+source $DEPLOY_BIN/class_setup
+source $DEPLOY_BIN/x_setup
+
+java ngat.sms.test.SimpleSimulationRun --lat 28.4 --long -17.8 --start "2009-02-17 20:00" --end "2009-02-17 23:00" --gls-port 2731
+
+

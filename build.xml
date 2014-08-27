@@ -1,0 +1,138 @@
+<?xml version="1.0"?>
+
+<project name="SMS" default="compile" basedir=".">
+
+  <description>
+    "Scheduler Managment System - Development"
+  </description>
+
+  <!-- Source Directories -->
+  <property name="project.dir" value="." />
+  <property name="config.dir" value="${project.dir}/config" />
+  <property name="src.dir" value="${project.dir}/java" />
+
+
+
+  <!-- Build Directories -->
+  <property name = "build.dir" value = "${env.HOME}/build/sms"/>
+  <property name = "class.dir"  value = "${build.dir}/java"/>
+
+  <property name= "javalib.dir" value="${env.LT_HOME}/bin/javalib" />
+  <property name= "javalib.3p.dir" value="${env.LT_HOME}/bin/javalib_third_party"/>
+  <property name= "javalib.3p.jibx.dir" value="${env.LT_HOME}/bin/javalib_third_party/jibx"/>
+  
+  <property name="jar" value="ngat_sms.jar" />
+
+
+
+  <!-- Prepare build directories -->
+
+  <target name="prepare" description="Prepare build directories">
+    <mkdir dir="${class.dir}" />
+    <tstamp>
+      <format property="BUILD" pattern="yyyyMMdd_HHmm" locale="en" />
+    </tstamp>
+    <echo message="Build date: ${BUILD}" />
+  </target>
+
+
+  <!-- Cleanup dross -->
+
+  <target name="clean" description="Clean out dross">
+    <delete verbose="true">
+      <fileset dir="." includes="**/*~" defaultexcludes="false" />
+    </delete>
+  </target>
+
+
+  <!-- Compile all sources -->
+
+  <target name="compile" depends="prepare" description="Compile sources">
+    <javac srcdir = "${src.dir}"  
+	   destdir = "${class.dir}" 
+	   source = "1.5" 
+	   target = "1.5" 
+	   includeAntRuntime = "false" 
+	   debug = "on">
+
+      <classpath>
+	<pathelement path="${classpath}" />
+	<fileset dir="${javalib.dir}">
+	  <include name="*.jar" />
+	</fileset>
+	<fileset dir="${javalib.3p.dir}">
+	  <include name="**/*.jar" />
+	</fileset>
+      </classpath>
+    </javac>
+  </target>
+
+  <!-- Generate RMI stubs and skeletons -->
+
+
+  <target name="rmic" depends="compile" description="Generate RMI stubs">
+    <rmic debug="true" 
+	  base="${class.dir}" 
+	  includes="ngat/sms/DefaultExecutionUpdateManager.class,
+       		    ngat/sms/DefaultExecutionUpdater.class,
+       		    ngat/sms/bds/TestScheduleDespatcher.class,
+       		    ngat/sms/bds/TestPhase2ModelProvider.class,    
+		    ngat/sms/bds/ContentionLogger.class,
+		    ngat/sms/models/standard/BasicPhase2CompositeModel.class,
+		    ngat/sms/BasicPhase2Cache.class,
+		    ngat/sms/SchedulingArchiveGateway.class,
+		    ngat/sms/tlas/TestLookAheadScheduler.class,
+		    ngat/sms/BasicInstrumentSynopsisModel.class,
+		    ngat/sms/BasicAccountSynopsisModel.class,  
+       		    ngat/sms/BasicHistorySynopsisModel.class,
+		    ngat/sms/DefaultSynopticModelProvider.class,
+		    ngat/sms/DefaultPhase2LoadController.class, 
+		    ngat/sms/tlas/FastLookAheadScheduler.class,
+		    ngat/sms/BasicVetoManager.class,
+		    ngat/sms/util/FeasibilityPrescan.class	" stubversion="1.2">
+
+      <classpath>
+	<pathelement path="${classpath}" />
+	<fileset dir="${lib.dir}">
+	  <include name="*.jar" />
+          
+	</fileset>
+      </classpath>
+
+    </rmic>
+  </target>
+
+
+  <!-- Deploy to JAR -->
+
+  <target name="jar" depends="rmic" description="Create class JAR">
+    <echo message="Build number: ${BUILD}" />
+
+    <echo message="Jarring" />
+    <jar jarfile="${javalib.dir}/${jar}" basedir="${class.dir}" />
+    <echo message="Jar output to ${lib.dir}/${jar} " />
+  </target>
+
+
+  <!-- API Docs -->
+
+  <target name="apidocs" description="Generate API documentation">
+
+    <javadoc destdir="/home/dev/public_html/sms/javadocs" author="true" version="true" private="true" verbose="true" breakiterator="true" windowtitle="SMS">
+
+      <classpath>
+	<pathelement path="${classpath}" />
+	<fileset dir="${lib.dir}">
+	  <include name="*.jar" />
+	</fileset>
+      </classpath>
+
+      <packageset dir="." defaultexcludes="yes">
+	<include name="ngat/sms/**" />
+      </packageset>
+
+    </javadoc>
+
+  </target>
+
+</project>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path=""/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="/home/dev/bin/javalib/ngat_ems.jar"/>
+	<classpathentry kind="lib" path="/home/dev/bin/javalib/ngat_message_base.jar"/>
+	<classpathentry kind="lib" path="/home/dev/bin/javalib/ngat_message_sms.jar"/>
+	<classpathentry kind="lib" path="/home/dev/bin/javalib/ngat_net.jar"/>
+	<classpathentry kind="lib" path="/home/dev/bin/javalib/ngat_net_telemetry.jar"/>
+	<classpathentry kind="lib" path="/home/dev/bin/javalib/ngat_new_astrometry.jar"/>
+	<classpathentry kind="lib" path="/home/dev/bin/javalib/ngat_new_icm.jar"/>
+	<classpathentry kind="lib" path="/home/dev/bin/javalib/ngat_new_oss.jar"/>
+	<classpathentry kind="lib" path="/home/dev/bin/javalib/ngat_new_phase2.jar"/>
+	<classpathentry kind="lib" path="/home/dev/bin/javalib/ngat_new_tcm.jar"/>
+	<classpathentry kind="lib" path="/home/dev/bin/javalib/ngat_util.jar"/>
+	<classpathentry kind="lib" path="/home/dev/bin/javalib/ngat_util_logging.jar"/>
+	<classpathentry kind="lib" path="/home/dev/bin/javalib_third_party/jibx/bcel.jar"/>
+	<classpathentry kind="lib" path="/home/dev/bin/javalib_third_party/jibx/jibx-run.jar"/>
+	<classpathentry kind="lib" path="/home/dev/bin/javalib/ngat_phase2.jar"/>
+	<classpathentry kind="lib" path="/home/dev/bin/javalib/ngat_astrometry.jar"/>
+	<classpathentry kind="lib" path="/home/dev/bin/javalib/ngat_autoguider.jar"/>
+	<classpathentry kind="lib" path="/home/dev/bin/javalib/ngat_message_gui_rcs.jar"/>
+	<classpathentry kind="lib" path="/home/dev/bin/javalib/ngat_message_rcs_tcs.jar"/>
+	<classpathentry kind="lib" path="/home/dev/bin/javalib/ngat_net_camp.jar"/>
+	<classpathentry kind="output" path=""/>
+</classpath>

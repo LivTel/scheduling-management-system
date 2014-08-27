@@ -1,0 +1,86 @@
+#!/bin/csh
+
+# ------------------------------------------
+# Launcher for: SCHED
+# ------------------------------------------
+
+if (${#argv} < 1) then
+    echo "Usage: sched ( start | stop ) <model>"
+    exit 1
+endif
+
+source /opt/ngat/etc/cshrc
+
+source ${DEPLOY_BIN}/class_setup
+source ${DEPLOY_BIN}/x_setup
+
+
+set DAT = `date -u +"%Y_%m%d_%H%M"`
+set SMS_CONSOLE_LOG_FILE = ${DEPLOY_TMP}/sched.log
+
+set PRESCAN 
+set PRUNE 
+
+set PID = $DEPLOY_TMP/sched.pid
+
+
+switch ($IN)
+
+    # START
+    case start:
+
+	echo $$ > $PID
+
+	set EGD = "-Djava.security.egd=file:/dev/urandom"
+	set DEBUG
+
+	set mexit = 0
+	
+	# lets just wait a bit and let gp2 bind
+	sleep 80
+
+	set JRS = "-Djava.rmi.server.hostname=occ.lt.com"
+
+
+	#set PRESCAN = "--prescan"
+	#set PRUNE = "--prune"
+
+	cd /occ/bin
+
+	$JAVA -DSCHED  $JRS ngat.sms.bds.StartExecutionManagerAndScheduler --bind-host localhost --base-host oss.lt.com --comp-host localhost \
+		--hist-host oss.lt.com  --sm-host localhost --sms-server-port 8776 --rcs-host localhost --ireg-host localhost \
+		--lat 28.7624 --long -17.8792 --log-level 4 --gls-host ltproxy --gls-port 2371  --ag-host acc.lt.com --ag-port 6571 $PRESCAN $PRUNE
+
+	set mexit = $status
+	echo "SCHED  Process exited with status $mexit "
+
+	breaksw
+
+    # STOP
+    case stop:
+
+    	echo "Scheduler Executive stopping"  >>& $SMS_CONSOLE_LOG_FILE
+	
+	if (! -e $PID) then
+	    echo "Cannot locate a PID file: $PID "  >>& $SMS_CONSOLE_LOG_FILE
+	    exit 1
+	endif
+	set AID = `cat $PID` 
+    
+	if ($AID == "") then
+	    echo "$PID does not contain a valid PID for the Sched" >>& $SMS_CONSOLE_LOG_FILE
+	    exit 2
+	endif
+
+	set BID = `ps -ef | grep $AID | awk '{if ($3 == '$AID') print $2}'`
+
+	kill -9 $AID  
+
+	kill -9 $BID
+
+    breaksw
+   
+endsw
+
+/bin/rm -f $PID
+exit 0

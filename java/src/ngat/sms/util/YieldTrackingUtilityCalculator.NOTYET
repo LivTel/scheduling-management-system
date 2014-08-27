@@ -1,0 +1,443 @@
+/**
+ * 
+ */
+package ngat.sms.util;
+
+import java.util.*;
+
+import ngat.phase2.*;
+import ngat.astrometry.*;
+import ngat.sms.EnvironmentSnapshot;
+import ngat.sms.ExecutionFeasibilityModel;
+import ngat.sms.ExecutionHistorySynopsis;
+import ngat.sms.ExecutionResourceUsageEstimationModel;
+import ngat.sms.GroupItem;
+import ngat.util.*;
+import ngat.util.logging.*;
+
+/**
+ * @author snf
+ * 
+ */
+public class YieldTrackingUtilityCalculator implements UtilityCalculator {
+
+	/** Default interval for feasibility search (ms). */
+	public static final long DEFAULT_SEARCH_INTERVAL = 5 * 60 * 1000L;
+
+	/** Timing constraints window calculator. */
+	private TimingConstraintWindowCalculator tcwc;
+
+	/** Exec timing and feasibility model. */
+	private ExecutionResourceUsageEstimationModel execModel;
+
+	 
+	private ExecutionFeasibilityModel xfm;
+	 
+	/** Holds cached yield data to speed up operation. */
+	private Map<Integer, YieldProfile> cache;
+
+	/** Site of the observatory. */
+	private ISite site;
+
+	/** Logging. */
+	private LogProxy logger;
+
+	/**
+	 * Create a YieldTrackingUtilityCalculator using the supplied models and
+	 * time step.
+	 */
+	public YieldTrackingUtilityCalculator(TimingConstraintWindowCalculator tcwc,
+			ExecutionFeasibilityModel xfm, ExecutionHistorySynopsis histModel, ISite site) {
+
+		this.tcwc = tcwc;
+		this.execModel = execModel;
+		this.xfm = xfm;
+		this.site = site;
+
+		Logger slogger = LogManager.getLogger("SIM");
+		logger = new LogProxy("YTC", "", slogger);
+
+		cache = new HashMap<Integer, YieldTrackingUtilityCalculator.YieldProfile>();
+
+	}
+
+	/** Return the utility for the specified group at time. */
+	public double getUtility(GroupItem group, long time, EnvironmentSnapshot env, ExecutionHistorySynopsis hist) {
+
+		logger.log(1, "GetUtility() Group=" + group);
+
+		int actualToDate = countActualExecutionsToDate(group, time);
+		double potentialToDate = countPotentialExecutionsToDate(group, time);
+
+		logger.log(1, "Execs " + group.getName() + " to date: " + actualToDate + " out of " + potentialToDate);
+		//System.err.println(ScheduleSimulator.sdf.format(new Date(time)) + " YTX to date: " + actualToDate + " out of "
+				//+ potentialToDate);
+
+		double yield = (double) actualToDate / potentialToDate;
+
+		logger.log(1, "YTC: " + group.getName() + ", Actual: " +actualToDate +", Potential: "+potentialToDate +" Yield: " + yield);
+
+		return yield;
+
+	}
+
+	/** Count potential executions for group upto date. */
+	public double countPotentialExecutionsToDate(GroupItem group, long atime) {
+
+		// TODO This section comes after the calculation of actual execs to date
+		// ...
+		logger.method("cpxtd(g,t)").log(1, "Count execs to date for: " + group.getName());
+
+		if (cache.containsKey(group.getID())) {
+
+			YieldProfile yp = cache.get(group.getID());
+			long ylatest = yp.getLatestEntry().time;
+			logger.log(1, "Has cache entry, latest: " + yp.getLatestEntry());
+
+			// If thats a long way past time we need to calc from yp.last upto
+			// time
+			// if (ylatest - atime > 24*3600*1000L) {
+			if (atime - ylatest > 24 * 3600 * 1000L) {
+				logger.log(1, "Calc potential...");
+				return calculatePotentialFeasibility(group, atime);
+			} else {
+				logger.log(1, "Interpolate...");
+				// otherwise we can interpolate/extrapolate from the highest
+				// entry prior to time
+				return yp.interpolateValue(atime);
+			}
+
+		} else {
+			logger.log(1, "No cache entry...");
+			// Got to work it all out, making sure the cache gets updated along
+			// the way...
+			YieldProfile yp = createInitialYieldProfile(group);
+			cache.put(group.getFullPath(), yp);
+			return calculatePotentialFeasibility(group, atime);
+		}
+
+	}
+
+	public YieldProfile createInitialYieldProfile(GroupItem group) {
+
+		if (group instanceof MonitorGroup)
+			return new YieldProfile(((MonitorGroup) group).getStartDate());
+		else if (group instanceof RepeatableGroup)
+			return new YieldProfile(((RepeatableGroup) group).getStartDate());
+		else if (group instanceof EphemerisGroup)
+			return new YieldProfile(((EphemerisGroup) group).getStart());
+		else
+			return new YieldProfile(group.getStartingDate());
+
+	}
+
+	/** Count actual number of executions for this group upto date. */
+	public int countActualExecutionsToDate(GroupItem group, long atime) {
+
+		// destroy any history - we want all possible times whether done or not.
+		ExecutionStatistics hist2 = new ExecutionStatistics(0L, 0);
+		// set env to best possible
+		EnvironmentSnapshot env2 = new EnvironmentSnapshot();
+		env2.seeing = Group.EXCELLENT;
+		env2.photom = true;
+
+		long execTime = execModel.getExecTime(group);
+
+		// setup a calendar object
+		Calendar cal = Calendar.getInstance();
+		cal.setTime(new Date(atime));
+
+		// We need to know how many successful executions it had since birth
+		// upto time.
+		ExecutionStatistics ahist = histModel.getExecutionStatistics(group, atime);
+		int hst = ahist.countExecutions;
+
+		return hst;
+	}
+
+	/** Calculate the feasibility of group upto date. */
+	private double calculatePotentialFeasibility(GroupItem group, long atime) {
+
+		// We need to know how many executions the group could have had since
+		// its last YP entry upto atime.
+		// then add this to the profile entry...
+
+		ITimingConstraint timing= group.getTimingConstraint();
+		
+		if (timing == null)
+			return 0.0;
+		
+		YieldProfile yp = cache.get(group.getID());
+		YieldProfileEntry ypl = yp.getLatestEntry();
+		long ylatest = ypl.time;
+		double luu = ypl.yield; // the yield upto last YP entry
+
+		// If the group has no entries then we start at -
+
+		double uu = luu; // count number of feasible executions
+
+		if (timing instanceof XMonitorTimingConstraint) {
+		
+			XMonitorTimingConstraint xmon = (XMonitorTimingConstraint)timing;
+
+			// destroy any history - we want all possible times whether done or
+			// not.
+			ExecutionHistorySynopsis hist2 = new ExecutionHistorySynopsis();
+			hist2.setCountExecutions(0);
+			hist2.setLastExecution(0L);
+			// just get a list of timing windows and check em out.
+
+			List windows = tcwc.listFeasibleWindows(group, hist2, ylatest, atime);
+			Iterator it = windows.iterator();
+			while (it.hasNext()) {
+				TimeWindow w = (TimeWindow) it.next();
+				// step thro the window and check for any feasibility (assume
+				// env is perfect).
+				boolean feasibleInWindow = false;
+				long tt = w.start;
+				while (tt < w.end && (!feasibleInWindow)) {
+					if (execModel.isFeasible(group, tt)) {
+						if (execModel.)
+						feasibleInWindow = true;
+						uu += 1.0;
+						yp.addEntry(tt, uu);
+					}
+					tt += DEFAULT_SEARCH_INTERVAL;
+				}
+
+			}
+
+			return uu;
+
+		} else if (timing instanceof XMinimumIntervalTimingConstraint) {
+			
+			XMinimumIntervalTimingConstraint xmin = (XMinimumIntervalTimingConstraint)timing;
+
+			// count number of nights since birth - special cases round night 0
+			// and last.
+
+			ISequenceComponent seq = group.getSequence();
+			
+			long execTime = (long)execModel.getExecTime(seq);
+
+			long minInt = xmin.getMinimumInterval();
+			long ts = xmin.getStartTime();
+			long te = xmin.getEndTime();
+			int maxExec = xmin.getMaximumRepeats();
+
+			// setup a calendar object
+			Calendar cal = Calendar.getInstance();
+			cal.setTime(new Date(ylatest));
+			cal.set(Calendar.MINUTE, 0);
+			cal.set(Calendar.SECOND, 0);
+			long nts = cal.getTime().getTime();
+			// zeroed minutes and seconds for ts.
+
+			int hh = cal.get(Calendar.HOUR_OF_DAY);
+			hh = hh + (int) Math.floor(Math.toDegrees(site.getLongitude()) / 15.0);
+
+			if (hh < 0)
+				hh += 24;
+			if (hh > 24)
+				hh -= 24;
+
+			// System.err.println("Date: "+sdf.format(d)+" at Longitude: "+l+(l
+			// < 0.0 ? "W" : "E")+" LH="+hh);
+
+			// compute last valid local noon of first active night
+			long sofn = 0L;
+			if (hh <= 12)
+				sofn = nts - 3600000L * (12 + hh);
+			else
+				sofn = nts - 3600000L * (hh - 12);
+
+			long son = sofn;
+			long eon = son + 24 * 3600 * 1000L;
+
+			while (son < atime) {
+				// night runs [son,eon]
+
+				eon = son + 24 * 3600 * 1000L;
+
+				long ws = son;
+				long we = eon;
+
+				// first night
+				if (son < ts && eon > ts)
+					ws = ts;
+				// last night
+				if (son < te && eon > te)
+					we = te;
+
+				// how many hours visible for ?
+				long visNight = calculateFeasibilityTime(group, ws, we);
+				double vfrac = (double) visNight / 86400000.0;
+				//logger.log(
+				//	/	1,
+					////	"Fractional Visibility: " + group.getName() + " for night: "
+							//	+ ScheduleSimulator.sdf.format(new Date(ws)) + " " + vfrac);
+
+				double du = 0.0;
+				if (visNight < execTime) {
+					logger.log(2, "Incr option[1 v<x] - 0");
+					du = 0.0;
+				} else if (minInt < 24 * 3600 * 1000L) {
+					logger.log(2, "Incr option[2 i<24h] - [vn/ex]+1");
+					du = (Math.floor(visNight / minInt) + 1.0);
+				} else {
+					logger.log(2, "Incr option[3 i>24h] - 24/int");
+					du = 24.0 * 3600 * 1000 / minInt;
+				}
+				uu += du;
+				logger.log(1, "Incremental yield fraction: " + du);
+				// uu is count of potential execs in night
+
+				son += 24 * 3600 * 1000L; // forward 24H
+				yp.addEntry(we, uu);
+
+			} // next night
+
+			return Math.min(uu, maxExec);
+
+		} else {
+			// This metric is not really applicable to other types of group...
+			return 1.0; // INFINITY
+		}
+
+	}
+
+	/**
+	 * Calculate amount of time for feasibility of Group between t1 and t2.
+	 * (this should be less than a day)
+	 */
+	private long calculateFeasibilityTime(GroupItem group, long t1, long t2) {
+
+		//logger.log(1, "Start feasibility calc for group from : " + ScheduleSimulator.sdf.format(new Date(t1)) + " to "
+			//	+ ScheduleSimulator.sdf.format(new Date(t2)) + " " + ((t2 - t1) / 1000) + "S");
+
+		long sumt = 0L;
+
+		long dt = DEFAULT_SEARCH_INTERVAL;
+
+		long t = t1;
+		while (t < t2) {
+			if (execModel.isFeasible(group, st))
+				xfm.isitFeasible(group, t, hist, null, env, dl)
+				sumt += dt;
+			t += dt;
+		}
+
+		return sumt;
+
+	}
+
+	/** Holds a yield profile for a group. */
+	private class YieldProfile {
+
+		/** Holds the time-ordered profile entries. */
+		SortedSet profile;
+
+		/** Create a YieldProfile. */
+		YieldProfile(long firstTime) {
+			profile = new TreeSet();
+			addEntry(firstTime, 0.0); // add a zero yield entry at group start,
+										// it cant have been executed before
+										// then...
+		}
+
+		/** Returns the last (latest time) entry in the profile. */
+		public YieldProfileEntry getLatestEntry() {
+			return (YieldProfileEntry) profile.last();
+		}
+
+		/** Add another profile entry. */
+		public void addEntry(long atime, double value) {
+			profile.add(new YieldProfileEntry(atime, value));
+		}
+
+		/** Work out an interpolated value of yield at atime. */
+		public double interpolateValue(long atime) {
+
+			logger.log(1, "Interpolate: for " + (new Date(atime).toGMTString()));
+			// If were before start?
+			// if (atime < firstTime)
+			// return 0.0;
+
+			// find the 2 entries bracketing atime and an extra one before if
+			// possible.
+			YieldProfileEntry yb1 = null;
+			YieldProfileEntry yb2 = null;
+			YieldProfileEntry ya = null;
+
+			Iterator iy = profile.iterator();
+			boolean found = false;
+			// loop over ordered entries, keep re-assigning yb1,yb2 until hit
+			// highest y.t < atime,
+			// drop out at first y.t > atime
+			while (iy.hasNext() && !found) {
+				YieldProfileEntry y = (YieldProfileEntry) iy.next();
+				System.err.println("Testing YP entry: " + y);
+				if (y.time < atime) {
+					yb1 = yb2;
+					yb2 = y;
+				}
+				if (y.time > atime) {
+					ya = y;
+					found = true;
+				}
+			}
+
+			// linear interpolation
+			if (yb2 != null && ya != null) {
+				return ((double) (atime - yb2.time)) * (ya.yield - yb2.yield) / ((double) (ya.time - yb2.time))
+						+ yb2.yield;
+			}
+
+			// extrapolate beyond end
+			if (yb1 != null && yb2 != null) {
+				return ((double) (atime - yb1.time)) * (yb2.yield - yb1.yield) / ((double) (yb2.time - yb1.time))
+						+ yb1.yield;
+			}
+
+			// extrapolate but we only have a single pre-entry yb2 (no yb1)
+			return yb2.yield;
+
+		}
+
+	}
+
+	/** Holds a YieldProfile entry (time, yield) pair. */
+	private class YieldProfileEntry implements Comparable {
+
+		/** Entry time. */
+		public long time;
+
+		/** Entry value. */
+		public double yield;
+
+		/** Create a YieldProfileEntry. */
+		YieldProfileEntry(long time, double yield) {
+			this.time = time;
+			this.yield = yield;
+		}
+
+		/** Comparator. */
+		public int compareTo(Object o) {
+			YieldProfileEntry yo = (YieldProfileEntry) o;
+
+			if (time < yo.time)
+				return -1;
+			else if (time > yo.time)
+				return 1;
+			else
+				return 0;
+
+		}
+
+		public String toString() {
+			return (new Date(time)).toGMTString() + ": " + yield;
+		}
+
+	}
+
+}

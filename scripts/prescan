@@ -1,0 +1,7 @@
+#!/bin/csh
+
+source /opt/ngat/etc/cshrc
+source /occ/bin/class_setup
+source /occ/bin/x_setup
+
+java ngat.sms.genetic.test.FeasibilityPrescan --lat 28 --long 190.0

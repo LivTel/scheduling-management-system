@@ -1,0 +1,84 @@
+#!/bin/csh
+
+# ------------------------------------------
+# Launcher for: SMP
+# ------------------------------------------
+
+if (${#argv} < 1) then
+    echo "Usage: smp ( start | stop ) "
+    exit 1
+endif
+
+source /opt/ngat/etc/cshrc
+
+source ${DEPLOY_BIN}/class_setup
+source ${DEPLOY_BIN}/x_setup
+
+set DAT = `date -u +"%Y_%m%d_%H%M"`
+set SMP_CONSOLE_LOG_FILE = ${DEPLOY_TMP}/smp.log
+
+# tarup any vol data
+set dat = `date -u "+%Y%m%d%H%M"`
+set tarup = p2_vol_${dat}.tar
+
+cd /occ/logs/volatility
+tar cvf $tarup p2update*.dat
+/bin/rm -fv  p2update*.dat
+
+cd /occ/bin
+
+set PID = $DEPLOY_TMP/smp.pid
+
+
+switch ($IN)
+
+    # START
+    case start:
+	echo $$ > $PID
+
+	set EGD = "-Djava.security.egd=file:/dev/urandom"
+	set DEBUG
+
+	set JRS = "-Djava.rmi.server.hostname=occ.lt.com"
+
+	set mexit = 0
+
+
+	echo $CLASSPATH
+
+	
+	$JAVA -DSMP  $JRS ngat.sms.test.LoadSynopticModel oss.lt.com  28.7624  -17.8792
+
+	set mexit = $status
+	echo "SMP Process exited with status $mexit "
+
+	# we could do a restart here is we wanted to.... eg in response to a smp.restart() rmi call...
+
+   # STOP
+    case stop:
+
+    	echo "Synoptic Model Provider Executive stopping"  >>& $SMP_CONSOLE_LOG_FILE
+	
+	if (! -e $PID) then
+	    echo "Cannot locate a PID file: $PID "  >>& $SMP_CONSOLE_LOG_FILE
+	    exit 1
+	endif
+	set AID = `cat $PID` 
+    
+	if ($AID == "") then
+	    echo "$PID does not contain a valid PID for the SMP" >>& $SMP_CONSOLE_LOG_FILE
+	    exit 2
+	endif
+
+	set BID = `ps -ef | grep $AID | awk '{if ($3 == '$AID') print $2}'`
+
+	kill -9 $AID  
+
+	kill -9 $BID
+
+    breaksw
+   
+endsw
+
+/bin/rm -f $PID
+exit 0

@@ -1,0 +1,38 @@
+#!/bin/sh
+
+# -----------------------------------------------
+# Init launcher for: SMP
+# -----------------------------------------------
+
+. /opt/ngat/etc/bashrc
+
+# Source function library.
+/etc/rc.d/init.d/functions
+
+DAT=`date -u +"%Y%m%d_%H%M"`
+SMP_CONSOLE_LOG_FILE=$DEPLOY_TMP/smp.log
+
+/bin/mv -f ${SMP_CONSOLE_LOG_FILE} $DEPLOY_TMP/smp.log.$DAT
+
+case "$1" in
+  start)
+	echo "Starting Synoptic Model Provider. "
+	echo "Logging to: " ${SMP_CONSOLE_LOG_FILE}
+	${DEPLOY_BIN}/smp start  1>> ${SMP_CONSOLE_LOG_FILE} 2>&1 &
+	;;
+  stop)
+	echo "Shutting down Synoptic Model Provider."
+	${DEPLOY_BIN}/smp stop $DEPLOY_SYSTEM 1>> ${SMP_CONSOLE_LOG_FILE} 2>&1 &     
+	;;
+  restart)
+	$0 stop
+	echo "Restarting in 30 secs" 
+	sleep 30
+	$0 start
+	;;
+  *)
+	echo "Usage: $0 {start|stop|restart}"
+	exit 1
+esac
+
+exit 0

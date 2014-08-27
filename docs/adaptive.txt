@@ -1,0 +1,20 @@
+Description of an adaptive scheduler simulation experiment.
+
+The basic premise here is that the horizon length should be related to both the stability period of the environment and to the volatility.
+
+Where the environment is stable we can use a long horizon. Where the volatility is low (define) we can also use a longer horizon. The voltility here must measure the potential to change the schedule score - ie a load of low valued new groups can be ignored we need the new groups to be high scoring.
+
+Method.
+
+Set up a phase2 model as a base. Run the model with env modified by a range of stability settings and at the same time run it with a range of volatility settings. 
+
+The result should be a plot of improvement over base (super-stable, all vol-events added at start) wrt x-axis showing env stability and y-axis showing volatility measure ie a contour plot.
+
+We then need to generate thes eplots for various attempts at scheduling - 
+(1) using BDS
+(2) using different H on QLAS/ELAS
+(3) most importantly using an adaptive scheduler
+
+
+The later AS needs to be able during its execution to look at the information from the env and vol models as to how volatile and unstable the situation is - we infact cheat here and allow the scheduler unrestricted access to this scenario  which we have pre-defined. A real scheduler would have to deduce this for itself somehow!!!
+

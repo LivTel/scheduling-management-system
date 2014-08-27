@@ -1,0 +1,43 @@
+#!/bin/csh
+
+# ------------------------------------------
+# Launcher for: SCHED
+# ------------------------------------------
+
+if (${#argv} < 1) then
+    echo "Usage: sched ( start | stop ) <model>"
+    exit 1
+endif
+
+source /opt/ngat/etc/cshrc
+
+source ${DEPLOY_BIN}/class_setup
+source ${DEPLOY_BIN}/x_setup
+
+echo $CLASSPATH 
+
+
+set PID = $DEPLOY_TMP/sched.pid
+
+
+	echo $$ > $PID
+
+	set EGD = "-Djava.security.egd=file:/dev/urandom"
+	set DEBUG
+
+	set mexit = 0
+	
+	# lets just wait a bit and let gp2 bind
+	sleep 80
+
+	$JAVA -DSCHED  ngat.sms.tlas.test.StartTestScheduler --bind-host localhost --base-host oss.lt.com --comp-host localhost \
+		--hist-host oss.lt.com  --sm-host occ.lt.com --sms-server-port 8776 --rcs-host occ.lt.com \
+		--lat 28.7624 --long -17.8792 --gls-host ltproxy --gls-port 2371
+
+	set mexit = $status
+	echo "SCHED  Process exited with status $mexit "
+
+	rm -f $PID
+
+
+endsw

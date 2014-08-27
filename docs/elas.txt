@@ -1,0 +1,41 @@
+Some things needed before QLAS or ELAS or ALAS can be used for real.
+
+
+Needs to run in background rather than on demand - but may want to be able to nudge it into running a sweep.
+It may also run at some pre-defined fraction of horizon e.g at 75% of way thro.
+
+How do we get the horizon value into the decision ?
+
+What search mech to use - not QLAS - something more optimal (min-energy) or (sim-annealing) or (genetic).
+
+What rule/mech used to allow volatile events to sequester sequence ?
+
+Do we allow any flexibility/contingency in the devised schedule ?
+-i.e. tree results or work out possible breakpoints based on predictions !
+
+What is the break policy - do we break and reschedule (with new horizon prediction) or 
+carry on observing but with penalty scores.
+
+Do we use EFR or just plain scores and how is EFR implemented (ie decay time?).
+
+How many planning layers - mission/tactical ? 
+-will need extra metric generators for these as they use longer term calculations.
+-will need to be able to calculate these things when volatile events are recieved
+ie the MP and TP need (immediate?) notification when significant VEs occur 
+- (significant) - this may mean that they get filtered updates.
+
+feedback from scheduler to planning layers - ie to let planning know we are actually doing/done a specific group.
+- maybe they are just registered as sched/exec update listeners ?
+
+Interesting offside issue - some way to compute roughness of search-space - a useful quantity to have in sched gui display !
+
+Planing layers - which metrics appropriate at each level ?
+
+--------------------------------------------------------------------------------------------------------------------------
+Planner	       (ID)	Period		Metrics
+--------------------------------------------------------------------------------------------------------------------------
+Strategic      (SP)	1 semester	none identified as yet.
+Tactical       (TP)	1 wk - 1 mth    PC (program completion), RS (resource sharing) - these are opposites!
+Mission	       (MP)	1 night		TD (target demand),  YT (yield tracking), RN (remaining night = urgency).
+Horizon Sched  (HS)	1 horizon	P (priority), OH/OA (optimal height/airmass), LM (lunar match), SM (seeing match).
+--------------------------------------------------------------------------------------------------------------------------

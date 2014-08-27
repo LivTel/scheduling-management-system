@@ -1,0 +1,39 @@
+#!/bin/csh
+
+# ------------------------------------------
+# Launcher for: GP2
+# ------------------------------------------
+
+if (${#argv} < 1) then
+    echo "Usage: ocr ( start | stop ) <model>"
+    exit 1
+endif
+
+source /opt/ngat/etc/cshrc
+
+source ${DEPLOY_BIN}/class_setup
+source ${DEPLOY_BIN}/x_setup
+
+echo $CLASSPATH 
+
+
+set PID = $DEPLOY_TMP/gp2.pid
+
+
+	echo $$ > $PID
+
+	set EGD = "-Djava.security.egd=file:/dev/urandom"
+	set DEBUG
+
+	set mexit = 0
+	
+	$JAVA -DGP2 ngat.sms.bds.TestPhase2ModelProvider --rhost localhost --gls-host localhost --gls-port 2371 
+#>>&! /occ/tmp/gp2.log &
+
+	set mexit = $status
+	echo "GP2 Process exited with status $mexit "
+
+	rm -f $PID
+
+
+endsw

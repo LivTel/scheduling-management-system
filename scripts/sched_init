@@ -1,0 +1,38 @@
+#!/bin/sh
+
+# -----------------------------------------------
+# Init launcher for: SCHED
+# -----------------------------------------------
+
+. /opt/ngat/etc/bashrc
+
+# Source function library.
+/etc/rc.d/init.d/functions
+
+DAT=`date -u +"%Y%m%d_%H%M"`
+SMS_CONSOLE_LOG_FILE=$DEPLOY_TMP/sched.log
+
+/bin/mv -f ${SMS_CONSOLE_LOG_FILE} $DEPLOY_TMP/sched.log.$DAT
+
+case "$1" in
+  start)
+	echo "Starting Scheduler. "
+	echo "Logging to: " ${SMS_CONSOLE_LOG_FILE}
+	${DEPLOY_BIN}/sched start  1>> ${SMS_CONSOLE_LOG_FILE} 2>&1 &
+	;;
+  stop)
+	echo "Shutting down Scheduler."
+	${DEPLOY_BIN}/sched stop $DEPLOY_SYSTEM 1>> ${SMS_CONSOLE_LOG_FILE} 2>&1 &     
+	;;
+  restart)
+	$0 stop
+	echo "Restarting in 30 secs" 
+	sleep 30
+	$0 start
+	;;
+  *)
+	echo "Usage: $0 {start|stop|restart}"
+	exit 1
+esac
+
+exit 0

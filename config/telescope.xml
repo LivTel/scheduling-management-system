@@ -1,0 +1,84 @@
+<xml>
+
+  <site>
+    <name> LT </name>
+    <latitude>  28.7624 </latitude>
+    <longitude> -17.8792 </longitude>
+   </site>
+
+  <system>
+  <payload>
+
+    <!-- Rotator base offset - may move location -->
+      <rotator>
+	<offset> 104.0 </offset>
+      </rotator> 
+
+    <!--    <instrument name="RATCAM">
+       <alias> RATCAM </alias>
+       <mount> /mnt/rat-image </mount>
+       <port> 3 </port>
+       <reboot> 2 </reboot>
+    </instrument> -->
+
+    <instrument name="RINGO3">
+       <alias> RINGO3 </alias>
+
+<!-- THIS IS WRONG R3 has 2 MOUNT POINTS BUT WE CANT COPE WITH THAT CONCEPT
+    SO TOCS WILL NOT WORK VERY WELL WITH RINGO3 -->
+
+       <mount> /mnt/ringo3-image-temp </mount>
+       <port> 7 </port>
+       <reboot> 1 </reboot>
+    </instrument>
+
+    <instrument name="RISE">
+       <alias> RISE </alias>
+       <mount> /mnt/rise-image </mount>
+       <port> 5 </port>
+       <reboot> 2 </reboot>
+    </instrument>
+
+<!--    <instrument name="IO:THOR">
+       <alias> THOR </alias>
+       <mount> /mnt/thor-image </mount>
+       <port> 0 </port>
+       <reboot> 2 </reboot>
+    </instrument> -->
+
+   <instrument name="IO:O">
+       <alias> IOO  </alias>
+       <mount> /mnt/o-image </mount>
+       <port> 0 </port>
+       <reboot> 2 </reboot>
+    </instrument>
+
+    <instrument name="FRODO">
+       <alias> FRODO</alias>
+       <mount> /mnt/frodo-image </mount>
+       <port> 6 </port>
+       <reboot> 2 </reboot>
+    </instrument>
+
+  </payload>
+
+  <guidance>
+
+    <autoguider name="CASS" default="true">
+      <host> autoguider1 </host>
+      <port> 6571 </port>
+    </autoguider>
+
+  </guidance>
+
+  <adjuster>
+  <!--  <config> /occ/rcs/config/tweaks.dat </config> --> 
+  <config> /occ/rcs/config/tweak_minus.dat </config> 	<!-- ROTATIONAL OFFSET changed +46.3deg for  IO:O -->
+  <!--  <config> /occ/rcs/config/tweak_zero.dat </config> --> <!-- As derived and correct on RATCam -->
+  <!--  <config> /occ/rcs/config/tweak_plus.dat </config>  --> <!-- Rotated but IO:O, but the wrong way -->
+  </adjuster>
+
+
+ </system>
+</xml>
+

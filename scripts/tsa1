@@ -1,0 +1,13 @@
+#!/bin/csh
+
+# Starts up a ScheduleDespatcher and ExecutionUpdateManager
+
+source /opt/ngat/etc/cshrc
+
+source $DEPLOY_BIN/class_setup
+source $DEPLOY_BIN/x_setup
+
+java ngat.sms.simulation.test.TestSimApp1 --lat 28.4 --long -17.8 --start "2010-09-17 18:00:00" --end "2010-09-18 07:00:00" >& ~/sim1.txt
+
+
+
