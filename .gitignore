@@ -1,3 +1,6 @@
 *.class
 *~
 bin/*
+/bin
+.classpath
+.project

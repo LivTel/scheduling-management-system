@@ -6,6 +6,8 @@
     "Scheduler Managment System - Development"
   </description>
 
+  <property environment="env"/>
+
   <!-- Source Directories -->
   <property name="project.dir" value="." />
   <property name="config.dir" value="${project.dir}/config" />
@@ -48,6 +50,7 @@
   <!-- Compile all sources -->
 
   <target name="compile" depends="prepare" description="Compile sources">
+  	<echo message = "Compiling from ${src.dir} to ${class.dir}"/>
     <javac srcdir = "${src.dir}"  
 	   destdir = "${class.dir}" 
 	   source = "1.5" 
@@ -93,7 +96,7 @@
 
       <classpath>
 	<pathelement path="${classpath}" />
-	<fileset dir="${lib.dir}">
+	<fileset dir="${javalib.dir}">
 	  <include name="*.jar" />
           
 	</fileset>
@@ -110,7 +113,7 @@
 
     <echo message="Jarring" />
     <jar jarfile="${javalib.dir}/${jar}" basedir="${class.dir}" />
-    <echo message="Jar output to ${lib.dir}/${jar} " />
+    <echo message="Jar output to ${jar} " />
   </target>
 
 
