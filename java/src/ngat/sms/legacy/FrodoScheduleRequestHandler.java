@@ -10,6 +10,7 @@ import ngat.message.SMS.SCHEDULE_REQUEST_DONE;
 import ngat.message.base.COMMAND;
 import ngat.net.JMSExecutionMonitor;
 import ngat.net.JMSServerProtocolRequestHandler;
+import ngat.phase2.IAcquisitionConfig;
 import ngat.phase2.ISequenceComponent;
 import ngat.phase2.XAcquisitionConfig;
 import ngat.phase2.XAirmassConstraint;
@@ -85,12 +86,12 @@ public class FrodoScheduleRequestHandler implements JMSServerProtocolRequestHand
 		root.addElement(eslew);
 		
 		// APERTURE
-		XAcquisitionConfig aperture = new XAcquisitionConfig(XAcquisitionConfig.INSTRUMENT_CHANGE, "IO:O", null, false);
+		XAcquisitionConfig aperture = new XAcquisitionConfig(XAcquisitionConfig.INSTRUMENT_CHANGE, "IO:O", null, false,IAcquisitionConfig.PRECISION_NOT_SET);
 		XExecutiveComponent eaperture = new XExecutiveComponent("aperture", aperture);
 		root.addElement(eaperture);
 		
 		// FINE_TUNE
-		XAcquisitionConfig acquire = new XAcquisitionConfig(XAcquisitionConfig.WCS_FIT, "FRODO", "IO:O", true);
+		XAcquisitionConfig acquire = new XAcquisitionConfig(XAcquisitionConfig.WCS_FIT, "FRODO", "IO:O", true,IAcquisitionConfig.PRECISION_NORMAL);
 		XExecutiveComponent eacquire = new XExecutiveComponent("acquire", acquire);
 		root.addElement(eacquire);
 		
