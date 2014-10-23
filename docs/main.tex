@@ -1,0 +1,52 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[dvips]{graphicx}
+\usepackage[dvips]{color}
+\usepackage{amsbsy, marvosym}
+\usepackage{amsmath}
+\usepackage{paralist}
+\usepackage[ruled,titlenumbered]{algorithm2e}
+
+\pagestyle{plain}
+\textwidth 16cm
+\textheight 23cm
+\oddsidemargin -0.5cm
+\topmargin 0cm
+
+
+\begin{document}
+\pagenumbering{arabic}
+\setlength{\parindent}{5mm}
+\setlength{\parskip}{10pt plus2mm minus2mm}
+\thispagestyle{empty}
+
+\title{Scheduling Managment System}
+\author{S.N. Fraser}
+\date{\today}
+\maketitle
+
+% \include{abstract}
+
+\newpage
+\tableofcontents
+\newpage
+\listoffigures
+\newpage
+\listoftables
+\newpage
+\listofalgorithms
+\newpage
+
+\include{environment_model}
+
+\include{execution_model}
+
+\include{timing}
+
+\include{astro}
+
+\newpage
+\bibliography{biblio}
+\bibliographystyle{apalike}
+
+\end{document}

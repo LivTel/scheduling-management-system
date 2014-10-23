@@ -1,0 +1,42 @@
+Function of ExtractorPlugin.
+----------------------------
+
+list tags
+
+foreach tag
+
+ if (tester.veto(tag))
+   return tester.reason();
+
+ list users
+
+ foreach user
+
+  if (tester.veto(user))
+    return tester.reason();
+
+  list props
+
+  foreach prop
+
+    if (tester.veto(prop))
+      return tester.reason();
+  
+    list groups
+
+    foreach group
+
+      if (tester.veto(group))
+        return tester.reason();
+
+      metrics.put(group, metric-generator.getMetrics(group))
+
+   next group
+
+  next prop
+
+ next user
+
+next tag
+
+return metrics

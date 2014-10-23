@@ -1,0 +1,155 @@
+Notes about how the scheduler will function.
+
+Scheduling:
+
+The scheduler searches the observation specifications database (Phase2 DB) to find all groups whose
+observational and timing constraints satisfy those imposed by the operating environment. From these 
+candidates one group is selected which is deemed by some selection criterion to be the 'optimal' group 
+to pass to the telescope/instruments for execution (observation) at that time.
+
+Observation program specification.
+ 
+The scheduler requires access to observation specifications and constraints imposed on the program
+by the observer. These are split into the following:-
+
+ Specification: What to observe and how. {Target, Instrument+Config, Exposure, Mosaicing}
+
+ Constraints:   When to observe.
+
+    Timing:     How often and over what period.
+
+    Conditions: Under what conditions to observe. {Lunar, Seeing, Airmass, Meridian, }
+
+This information is supplied from the DataModel interface to the Phase2DB.
+
+Accounting information is required to determine whether the observer/proposal/tag has time/credit
+available under the requested conditions/charging-regime. This is supplied by the AccountingModel]
+interface to the Phase2DB.
+
+Historic information relating to the past success or failure of groups or quality of images is used 
+to allocate additional metrics. This is available via the HistoryModel inerface to the Phase2DB.
+
+Environmental information.
+
+Various additional models supply information about the telescope and environment under which the 
+scheduler is to select its observations.
+
+SiteDataModel: Supplies site details - lat,long,altitude.
+
+ExecutionModel: Is a representation of the telescope and how it will execute the groups. This is
+used to determine how long a group is expected to take and whether it is technically feasible with
+the current instrument setup/configuration. 
+
+ConstraintsModel: Supplies available time periods when we can observe and the charging regime in force.
+
+EnvironmentModel: Supplies details of environmental data {Seeing, Photom, SkyBright, etc}
+
+
+Software Components.
+
+The scheduler is called on by a client which wants a ranked list of groups which are capable of being
+observed at the present moment. The scheduler has basically has 3 operations to perform.
+
+ 1. Search the DB for groups which are capable of being scheduled, generates candidate-list
+ 2. Work out metrics for candidate-list creating a ScheduleMetrics.
+ 3. Apply selection criterion to ScheduleMetrics and obtain Schedule of ranked groups.
+
+The client may then select the top ranked group or use the list in whatever way it wants, e.g.
+it may just want to know the rank of a particular group in the list.
+
+The 3 tasks above can be implemented in various ways, so it makes sense to have these as seperately
+pluggable modules. Infact the first 2 tasks are for efficiency's sake best performed in one operation.
+
+Extractor Plugin: 
+A class which searches the Phase2DB and compiles a list of schedulable groups along with their metrics.
+ 
+ - Extractor.generateCandidateList() -> ScheduleMetrics
+
+Selector Plugin: 
+A class which applies a scoring heuristic to the metrics to sort the candidates into rank order.
+ 
+ - Selector.selectSchedule(ScheduleMetrics) -> Schedule
+
+In case we need to seperate out the job of genrating metrics (see below) we need another module
+
+MetricGenerator Plugin: Calculates metrics for a supplied Group from the candidate list.Maybe at a
+specific time rather than now. 
+
+ - MetricGenerator.generateMetrics(Group group, long periodStart, long periodEnd) -> MetricVector. 
+
+Use cases.
+
+1. RCS Schedule call.
+
+-RCS sends environmental and constraints information to the OSS to allow the various environmental
+ models to adjust. 
+   -Seeing/photom/skybright data from image reduction.
+   -Availability and charging regimes from ??.
+   -Telescope position. 
+   -Instrument availability.
+
+-RCS sends schedule request when ready to observe.
+
+-OSS invokes SCHEDULEImplementor.
+
+-SCHEDULEImplementor calls run() on Scheduler.
+
+-Scheduler invokes CandidateExtractorPlugin to search the P2DB and generate candidates' metrics.
+
+-Scheduler passes candidate list and metrics to ScheduleSelectorPlugin to rank the candidates
+ into order.
+
+-Scheduler passes schedule back to SCHEDULEImplementor.
+
+-SCHEDULEImplementor locks the top ranking group in the P2DB via DataModel and passes back to RCS.
+
+-RCS executes group.
+
+Variations:
+ - The SCHEDULEImplementor may select several groups from the schedule if the RCS is capable of 
+   handling multiple groups in sequence - this could lead to more efficient time usage. The
+   RCS would have to specify how many groups to return or what period the schedule should cover.
+   The Selector and Extractor would need to somehow agree on time varying metrics to do this, or
+   the Extractor would just generate the candidates and the Selector would have to try different
+   combinations of groups as their metrics were varied on-the-fly i.e. Extractor just pulls list
+   without generating metrics. Need an intermediate Plugin to generate metrics for a group 
+
+ The Selector 
+  would have to create various schedules (e.g. {g1 at t1 , g2 at t2, g3 at t3 etc} as one schedule 
+  and then call MG.generateMetrics(g1, t1, t2), MG.generateMetrics(g2, t2, t3) etc then repeat
+  the whole thing for the next candidate schedule until an optimal schedule was picked.
+
+
+Updating:
+
+When the selected group(s) have been executed (observed) the client will send back the results of
+the observations in the form of ExecutionResults. These will contain details of the success of
+failure of the observations and performance data which may be fed back into the scheduler or
+other models.
+
+Software Components.
+
+The Scheduler is the recipient of this information via its update(ExecutionResults) method. 
+It uses several delegates to actually modify the data and environment models.
+
+AccountsUpdateEngine: A module which knows how to charge the various accounts for time/credit used
+during the execution of the observations.
+
+HistoryUpdateEngine: This module knows how to update the HistoryModel with details of the success
+and performance statistics from the execution.
+
+Use cases:
+
+1. RCS Update call.
+
+-RCS sends ExecutionResults back to UPDATEImplementor.
+
+-UPDATEImplementor calls update() on Scheduler.
+
+-Scheduler passes ExecResults to AccountsUpdateEngine to update AccountingModel for group(s) completed.
+
+-Scheduler passes ExecResults to HistoryUpdateEngine to update HistoryModel for group(s) completed.
+
+-UPDATEImplementor unlocks completed group(s) in the P2DB via DataModel.
+
+

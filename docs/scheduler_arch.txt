@@ -1,0 +1,518 @@
+Notes relating to the OSS Scheduling Simulator and general scheduling architecture.
+
+Suggested architecture notes:
+
+#------------------------------------------------------
+# SchedulingEngine/Scheduler
+#------------------------------------------------------
+That which encapsulates all scheduling knowledge and client interfaces.
+
+A client requests the scheduler (SE) to execute/run which returns a Schedule containing the
+ranked selection of groups to execute. 
+
+ -public Schedule run()
+
+Basically, the scheduler (SE) calls run() on the ExtractorPlugine. This searches the database and 
+prunes out any groups which cannot be observed due to the various vetos imposed by the constraints 
+set in the DataModel.
+
+e.g. 
+ target too low, proposal out of credit in current conditions, moon too close.
+
+The resulting SchedulingMetrics are then passed to a SelectorPlugin which applies some form of 
+fitness algorithm to these to yield a Schedule of ranked groups. This is then returned to the 
+client.
+
+The scheduler is also the client's interface
+to update the Accounting/Database/History Models with the results of the actual execution.
+
+ -public void update(ExecResults)
+
+The scheduler passes the ExecResults to an AccountsUpdateEngine which updates the relevant accounts
+e.g. deducts time from the Proposal's "Conditions=Lunar:Dark,Seeing:Average" account and its 
+"TotalTime"
+account. The results are also passed to a HistoryUpdateEngine to modify the HistoryModel 
+e.g. to note
+this group was last successfully observed during window #n with m images. 
+
+Later we might want to note that of the m images, q were of quality >Q etc.
+
+
+#------------------------------------------------------
+# Schedule
+#------------------------------------------------------
+The results of running the scheduler once.
+
+We should be able to call things like:-
+ schedule.getBestGroup(),
+ schedule.listAvailableGroups() -> Iterator over groups from highest rank,
+ schedule.rank(Group), scheduler.rank(Group, epoch).
+
+#------------------------------------------------------
+# IExtractorPlugin
+#------------------------------------------------------
+Performs the task of searching the DataModel for groups which are permitted to run at the 
+specified time. This Plugin is expected to return a set of scheduling metrics for each
+observable group. Its function is basically as follows:-
+
+ -Search through DB and on each object encountered,
+  -Test for veto - i.e. does it fail for any reason.
+ -After testing add to candidate list.
+ -Use MetricGenerator to calculate set of metrics.
+ 
+The job of testing could be delegated off to a veto tester plugin if required.
+
+ -public SchedulingMetrics getMetrics(long time)
+
+#------------------------------------------------------
+# IMetricGeneratorPlugin
+#------------------------------------------------------
+This is used by the Extractor to actually work out the metrics
+
+#------------------------------------------------------
+# ISelectorPlugin     
+#------------------------------------------------------
+Supplied with metric vectors, this Plugin chooses an observation group from these available groups 
+by applying some form of descrimination algorithm on them.
+
+- e.g.  MaximumWeightingFunctionSelectorPlugin 
+     - score by weighting of parameters and choose in score order.
+
+- e.g. NeuralNetSelectorPlugin 
+     - uses a trained Neural network to assign groups to fitness bins {best/good/crap}.
+     
+ -public Schedule select(ScheduleMetrics)
+
+#------------------------------------------------------
+# ScheduleMetrics 
+#------------------------------------------------------
+The set of available groups at some instant along with their metric/parameter vectors - 
+these metrics are the values passed into the selector which will apply the relevant weights or
+whatever mechanism it employs and select typically the highest scoring.
+
+Structure: A mapping from GroupID to an instance of SchedulingMetricVector. The later being a 
+vector containing an element for each of the measured quantities we want to use for the objective
+ function evaluation or whatever we decide to do to pick the 'best' group. 
+These will be things like:-
+
+height/transit, slewtime, priority, exec-time, number-of-obs, time-used/time-allocated.
+
+#------------------------------------------------------
+# ISchedulingMetricVector 
+#------------------------------------------------------
+This is the object which contains the various parameters the Selector will use to select the 
+optimal or best group and to rank the observable groups into fitness order. Each group has one of
+these vectors.
+
+ -public Iterator listElements()
+ -public double getMetric(String id)
+
+e.g. listElements() returns {"height", "slew", "lateness", "resource.usage"}
+
+     getElement("transit.height") returns the value for (height / transit_height)
+
+This is one mechanism for access, this way the set of metrics can be changed without the selector
+needing to be hard-coded, it could just configure from some sort of config file which matches a 
+weight to the various ids. It would have to throw a wobbly if any were wrong/weird.
+
+Alternate is to hard define these and then need methods like:
+
+ -getHeightMetric()
+ -getLatenessMetric()
+ -getResourceUsageMetric()
+ 
+#------------------------------------------------------
+# IExecutionModel
+#------------------------------------------------------
+This is a model of how the scheduler expects the telescope and instruments to perform a group of
+observations. This would include times for slewing, acquisition, instrument changes/configuration,
+wrap/unwrap of axes. This model needs generally to have access to information in the SiteDataModel.
+
+This is not the same as the simulator's model which includes
+random errors and distributions - this is for the scheduler to try and work out how the telescope
+will perform observations - it may be feasible to tune this against the real executor via a 
+feedback element where the scheduler adapts its model in response to simulated or real perfomance.
+
+ -getNominalExecTime(Group), getMaximalExecTime(Group)? 
+ 
+#------------------------------------------------------
+# IEnvironmentModel
+#------------------------------------------------------
+A representation of the telescope's, atmospheric and site environment.
+
+From the atmospheric model we want to extract current values and averages and predictions for
+various quantities:-
+
+ -getSeeing()
+ -getAverageSeeing(dt) // average seeing over last DT time.
+ -getSeeingPrediction(dt) //predict likely seeing at now + dt
+ -getSeeingPrediction(dt, xx) // probability that seeing is better then xx over next dt.
+
+ -getPhotometricity()
+
+ -getSkyBrightness(alt,az, t) // what is the skybrightness at (alt,az) at t
+
+If these quantites prove too numerous and variable we may need to parameterize them
+
+e.g. 
+ -getPrediction("seeing", dt, xx)
+ -getPrediction("skybrightness", alt, az, t, xx) 
+
+ // what is the probabiliity that the skybrightness at (alt,az) will be better than xx at t? 
+
+How this data is represented internally is of no consequence to the scheduler. It may be updated
+from time to time by the RCS using monitoring data or adhoc requests or on exposure etc OR it
+may be generated on-the-fly by a simulator at intervals or according to an internal model as 
+required.
+
+
+#------------------------------------------------------
+# SiteDataModel
+#------------------------------------------------------
+Contains details about the site, telescope and instruments. This might include static data such as
+the site parameters, and instant data, e.g. the current azimuth etc - however the Scheduler should 
+never really need to know these later values - though they will be of interest to the ExecModel
+
+Site.
+
+ -getLatitude()
+ -getLongitude()
+ -getAltitude()
+
+Telescope.
+
+Instruments.
+
+ -listInstruments()
+ -getInstrument(id) -> ngat.instruments.Instrument **these may need beefing up**
+ 
+There may be a need for some items such as:-
+
+ -getAutoguiderStatus() / isAutoguiderAvailable() etc so we can test against an obs requirement 
+for this item or against a requirement by obs of > T for its use.
+
+Maybe we just use -getInstrument("autoguider") and treat generically (ngat.instrument.Autoguider)
+
+
+#------------------------------------------------------
+# IAstrometry
+#------------------------------------------------------
+General astrometric environment stuff like:-
+
+ -getNextSunriseTime()
+ -isMoonRisen()
+ -getMoonRiseTime()
+
+This is in effect already done via the ngat.astrometry.Astrometry class and concrete plugin(s).
+
+#------------------------------------------------------
+# IConstraintsModel
+#------------------------------------------------------
+A representation of the timing and spatial constraints imposed on the scheduler other than via the 
+data and environment models. 
+
+How do they get there ? What are they ? (next_fixed_group_at, ). 
+These may get set as follows:
+
+next_fixed_group
+
+By a simulator:
+Simulator consults strategy to determine the time of next FixedGroup and next RTI Period.
+
+By a RCS schedule call:
+RCS Sends constraint info e.g. next RTI period, Next CalibPeriod etc.
+SCHEDULEImpl consults the DataModel and searches for the next fixed group.
+
+In both cases, these are set in the IConstraintsModel for the scheduler to consult as required.
+
+
+ -getNextFixedGroup()
+ -getNextPriorityOverride() // time of calib or rti.
+ -getNextHighCostPeriod(c) // period covered by a high charging zone above c credits/sec.
+
+#------------------------------------------------------
+# ITimeModel
+#------------------------------------------------------
+This provides the time for the Scheduler - this could be the actual time or some simulated time set
+by an external entity e.g. simulator.
+
+ -public long getTime()
+
+ RealTimeModel - getTime() { return System.currentTimeMillis(); }
+ MySimTimeModel - getTime() { return simTime; } .. advanceTime(long dt) {simTime += dt;}
+
+We may want e.g. to use a RealTime model but with the ability to switch the time to some random
+time in the future for a one-off call. This might occur if we are trying during normal ops to
+check on the likely scheduling results for a potential group (e.g. via TEA) at some future point, 
+we then revert to normal time after this call.
+
+#------------------------------------------------------
+# IDataModel
+#------------------------------------------------------
+A representation of the Phase2 database, the tree structure from which we extract information about
+groups and their enclosing proposals etc. This model supplies 2/3 types of information:-
+
+ Observation specification: 
+  - what target to observe, for how long and using which instrument and configuration.
+ Constraints:
+   General:
+    - under what environmental conditions to allow this observation.
+   Timing:
+    - when and when not to perform this observation.
+
+
+ -getGroup(gid), getProposal(pid), getTag(tid),..
+ -storeProposal(proposal), storeTag(Tag), storeUser(user),...
+
+I would expect the following minumim set of concrete classes.
+
+- JYDHybridDataModel 
+  - accesses the P2DB using the JYD/JSO as implemented currently by OSS_Utilities.
+
+- SimulatedDataModel 
+  - creates database on-the-fly or at startup according to some pre-arranged distribution
+    of targets/obs lengths/monitor periods or according to an abstract model of the type
+    of programs used and how they are made up - this requires a way of characterizing 
+    the content of the Phase2 DB mathematically.
+
+- MemoryDataModel
+  - An in-memory datamodel - it could be populated by JYD/JSO or simulation generated data
+    and would need to be able to persist any changes whilst keeping memory copy.
+
+A datamodel which is based on real persistent data but to which additional groups, proposals
+etc can be added for consideration but which are not persisted when the Db is saved - i.e.
+they may only be kept for a number of schedule rounds or until discarded - they influence the
+schedule but are not part of the real dataset - i.e. they are never actually executed..
+This would be a useful appendage to any DataModel.
+
+
+#------------------------------------------------------
+# SchedulingEvent
+#------------------------------------------------------
+An event generated by the SchedulingEngine while performing a schedule run. These would be 
+monitored by a connected ScheduleEventWatcher to do something useful with e.g. logging, plotting, 
+displaying  etc.
+
+It is not clear whether these should be distinguished by seperate subclasses 
+e.g. StartProcessingGroupEvent, etc or identified by a String parameter such as
+SchedulingEvent(START_PROCESSING_GROUP) ?
+
+It is also not clear what events would be interesting to watch.
+
+#------------------------------------------------------
+# SchedulingEventWatcher
+#------------------------------------------------------
+Something which registers for SchedulingEvents and does something with them.
+
+------------
+ ACCOUNTING
+------------
+
+It is intended to seperate out the Observation specifications (DataModel) from the accounting 
+information relating to programs. This represents the usage and allocation of chargeable resources 
+by the program.
+
+ e.g. time used by program in poor, dark conditions in semester 0xB 
+      relative to program's semester allocation under those conditions.
+
+#------------------------------------------------------
+# IAccountingModel
+#------------------------------------------------------
+Repesents the interface to the accounting system. It is expected that information about program 
+completion, time allocations in various conditions, fixed time used and allocated etc will be 
+stored in some database or filesystem accessable via this. It is quite possible the DataModel 
+and AccountingModel are represented by the same database.
+
+methods to get/list account ids for these standard periods. 
+
+listAccountHolders()
+getAccountHolder(id)
+gtAcountManager(id)
+
+------------------------------------------------------
+# AccountID
+#------------------------------------------------------
+It may be useful to define a class AccountID which abstracts out the unique ID concept rather 
+than using a String.
+
+#------------------------------------------------------
+# AccountHolder
+#------------------------------------------------------
+An object which owns a number of accounts. A holder may register a number of different account 
+against different AccountIDs.
+
+This interface only allows read and withdraw operations via the ClientPeriodView
+
+#------------------------------------------------------
+# Account
+#------------------------------------------------------
+Repesents the usage of a chargable resource.
+An account has content such as:-
+
+ - ID       The ID against which this account is registered. 
+ - balance  The amount left in the account for this period.
+ 
+ -getPeriod() returns an AccountingPeriod
+
+We also need some concepts of:- Allocated credit and used funds. ie we may need to determine
+how much of the originally allocated funds are left not just the current balance 
+e.g. scheduler may want a metric of f(used/allocated) not just f(balance).
+
+
+An account management agent might want to decide whether to allow unused resources to flow across
+accounting period boundaries.
+
+#------------------------------------------------------
+# AccountingPeriod
+#------------------------------------------------------
+A period over which part of an account is valid. An account may contain details for a number of 
+periods.
+
+We do not explicitly have access to the actual account object - if one exists - the period
+span is the fundamental item and we can access it via either the Client or Manager interface
+
+#------------------------------------------------------
+# ClientPeriodView
+#------------------------------------------------------
+Provides these methods:
+
+-withdraw(double amount) throws AccountOverdrawnException
+
+-getBalance()
+
+#------------------------------------------------------
+# ManagerPeriodView
+#------------------------------------------------------
+
+Provides in addition:-
+
+-credit(double amount)
+
+
+#------------------------------------------------------
+# AccountTransaction
+#------------------------------------------------------
+A time, amount and a reference. Represents a deposit (allocation) or withdrawal (usage) from the 
+resource.
+
+// get the account holder
+ AccountHolder accprop = (AccountingProposal)accountsModel.getAccountHolder(propId);
+
+// create a transaction to deduct time specified by the exec results.
+ accprop.getAccountClientView("SEEING:"+group.getMinSeeing(), now).	
+			 withdraw(new Date(), results.getExecTime(), rcsID);
+
+// This should have deducted the amount, made a Transaction and added it to the audit trail and
+// then sent an accountUpdated(at) message to the AccountUpdateListener which will then have
+// stored the account details e.g. to an XML/AML file.
+
+// get the accounting period for the current semester.
+ account.getPeriod(Accounts.currentSemester()).addTransaction(at);
+
+
+#------------------------------------------------------
+# AuditTrail
+#------------------------------------------------------
+Basically just a list of AccountTransactions. Can be used to monitor historic resource usage by 
+an account.
+
+#------------------------------------------------------
+# AccountsUpdateEngine
+#------------------------------------------------------
+This plugin module is used to update the AccountingModel by the scheduler on receipt of an update 
+from the RCS or whatever executor is performing the observations. The ExecResults contain details 
+of time and other resources used by the group during its execution and how well the observations
+were performed - we may get updates to this later when e.g. a human has quality checked the images 
+and need then to re-allocate credit to the proposal for crap images. Need to be aware that this 
+can be called on both immediately after the observations and a day or so later - need to 
+distinguish these different types of update- e.g. 2 different method calls
+
+ -update(ExecResults) - when the obs have completed.
+ -update(QualityResults) - after a human/machine has QA'd the images.
+
+There needs to be a GIUID or Group Instantiation Unique ID to distinguish this particular 
+instantiation of a repeating group - this will also be needed by the HistoryUpdateEngine 
+- it is not yet clear how we seperate out how Results type classes are allocated by the Scheduler 
+to various updaters.
+
+-------------------
+ HISTORY RECORDING
+-------------------
+
+We expect to be able to record the history of interaction with the entities in the DataModel. 
+e.g when groups get scheduled for execution, when they execute and whether successful or failure 
+plus useful information about the execution
+
+ -time slewing
+ -images generated
+
+and further forward..
+ -fraction of assessed good images (manual QC)
+ -data quality (observer feedback) 
+ -higher order stuff (papers, citation counts)
+
+This sort of stuff wants to go into a seperate Model e.g. HistoryModel.
+
+We also need this stuff for use by the scheduler..
+
+e.g. for MonitorGroups we want to know when the group was last scheduled and executed OK. Currently
+this is part of the DataModel - but it is not an observer's constraint rather it is generated 
+during the lifetime of the observing/group.
+
+---------------------------------------------
+ SIMULATION-SPECIFIC ADDITIONAL REQUIREMENTS
+---------------------------------------------
+
+#------------------------------------------------------
+# SimulationFramework
+#------------------------------------------------------
+A framework that encapsulates all simulation knowledge and results.
+
+#------------------------------------------------------
+# ISimulationStrategy
+#------------------------------------------------------
+The information which determines how the simulation will proceed. When to start, how long
+to run for, no of runs, details of which  variables will be changed per run and how.
+
+ Here e.g. we are setting up for 30 * 10 runs with slew_weight and dome_limit changing per run.
+ (slew_weight: 30 * vary linearly starting at s0 change by ds units per run), 
+ (dome_limit: 10 * vary linearly starting at 10 change by 1 per set of slew runs)
+ (replacement_policy: replace_after_each_run).
+
+We may also want to determine how data is collated in a set of runs.
+
+The Strategy also tells us how to advance the simulation timestep i.e. do we just take the
+Group's nominal exec time or do we add a random time element (timestep_delta = x + rnd(y))) 
+or do we randomly fail some groups (group_fail_prob = 0.15)?
+
+A Strategy may also want to apply a special DataModel to the Scheduler using simulated data 
+according to a pre-determined distribution of exposure times, no of obs per group, multruns per 
+obs etc, or to use a live DataModel with real DB content.
+
+The strategy may want to impose  useability time constraints on a run, such as the occurance of
+day and night at the site, useability profile of the telescope (e.g. to factor in (random) 
+downtime), pre-scheduled off-time for real-time ops and planned engineering etc. We may also want 
+the Simulator to be able to interact with this model to set random events on and off. 
+This may need to be a seperate interface/model.
+
+-getStartTime()
+-getEndTime()
+-getExecutionModel() // 
+-getConstraintsVariationModel() // how the various parameters should be varied
+
+#------------------------------------------------------
+# StochasticExecutionModel
+#------------------------------------------------------
+This is the simulator's model of how the telescope executes programs supplied by the scheduler.
+It includes times for various actions and distributions of times. It includes random ranges for
+various parameters. It is NOT the model the scheduler uses to predict telescope actions. 
+
+-getExecTime(group) // includes random elements for slewing, acquire, unwrap, failure and retry
+		    // inst select and config, rotator setting, tracking settling etc
+		    // and may be varied as indicated by the strategy.
+
+#------------------------------------------------------
+# SimulationResults
+#------------------------------------------------------
+The collated results of a set of simulation runs based on the applied strategy.
+
