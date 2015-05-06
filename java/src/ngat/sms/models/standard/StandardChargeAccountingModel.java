@@ -42,6 +42,7 @@ public class StandardChargeAccountingModel implements ChargeAccountingModel {
 	public static final double FRODO_DEFAULT_READOUT_TIME = 20000.0;
     public static final double IO_O_DEFAULT_READOUT_TIME = 19000.0;
 	public static final double GENERIC_DEFAULT_READOUT_TIME = 10000.0;
+    public static final double IO_I_DEFAULT_READOUT_TIME = 15000.0;
 
 	private volatile IInstrumentConfig lastConfig = null;
 
@@ -312,6 +313,8 @@ public class StandardChargeAccountingModel implements ChargeAccountingModel {
 			return RISE_DEFAULT_READOUT_TIME;
 		} else if (instName.toUpperCase().startsWith("FRODO")) {
 			return FRODO_DEFAULT_READOUT_TIME;
+		} else if (instName.equalsIgnoreCase("IO:I")) {
+		    return IO_I_DEFAULT_READOUT_TIME;
 		} else
 			return GENERIC_DEFAULT_READOUT_TIME;
 	}

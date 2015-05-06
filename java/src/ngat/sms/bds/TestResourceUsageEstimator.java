@@ -54,6 +54,8 @@ public class TestResourceUsageEstimator implements ExecutionResourceUsageEstimat
 
 	public static final double IO_O_DEFAULT_READOUT_TIME = 19000.0;
 
+	public static final double IO_I_DEFAULT_READOUT_TIME = 15000.0;
+
 	public static final double GENERIC_DEFAULT_READOUT_TIME = 10000.0;
 
 	private volatile IInstrumentConfig lastConfig = null;
@@ -494,6 +496,8 @@ public class TestResourceUsageEstimator implements ExecutionResourceUsageEstimat
 			return IO_O_DEFAULT_READOUT_TIME;
 		} else if (instName.equals("IO:THOR")) {
 			return IO_THOR_DEFAULT_READOUT_TIME;
+		} else if (instName.equals("IO:I")) {
+			return IO_I_DEFAULT_READOUT_TIME;
 		} else
 			return GENERIC_DEFAULT_READOUT_TIME;
 
