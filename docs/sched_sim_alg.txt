@@ -1,0 +1,45 @@
+ScheduleSimulator {
+    
+    simulate(start, end, numRuns) {
+
+	create execModel
+	create scoreModel
+	create selector
+	create histModel
+	create phaseCache
+
+	create despatcher (execModel, scoreModel, selector, histModel, phase2Cache)
+
+	phase2Cache.load()
+
+	repeat (numRuns) {
+
+	    histModel.reload(phase2Cache)
+
+	    time = start
+	    
+	    while (time < end) {
+
+		seeing = randomSeeing()
+
+		metric = despatcher.bestGroupMetrics(time, seeing)
+		
+		group = metric.getGroup()
+
+		exec  = execModel.getExecTime(group, seeing, histModel.lastExec(group))
+
+		time += exec
+
+		histModel.update(group, time)
+
+		record exec
+
+	    } next time step
+
+	    record stats
+
+        } next run
+
+    }
+
+}

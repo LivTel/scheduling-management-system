@@ -1,0 +1,61 @@
+Description of the implementation of the Accounting system.
+
+AccountingModel: interface represents the entry point into the accounting system. It should provide a means of listing AccountHolders (by ID) and retrieving references to these. How do we add these ?
+
+ -listAccountHolders()
+ -getAccountHolder(id)
+ -getAccounManager(id)
+
+Not clear if we need to distinguish these at this level in terms of internal representation - i.e. do we just have an AccountRepresentive who could be a Holder(client) or a Manager.
+
+Possible extension to interface as: MutableAccountingModel:
+
+ -addAccountHolder(AccHolder)
+ -addAccountManager(AccManager)
+or -addAccountRepresentive(AccManager/Rep)
+
+ -removeAccountHolder(AccHolder)
+ -removeAccountManager(AccManager)
+or -removeAccountRepresentive(AccManager/Rep)
+
+
+AccountHolder: interface provides a client's access to an account - i.e. debit() and getBalance() operations.
+
+AccountManager: interface additionally provides read/write priveleged access to an account i.e. permits credit() as well as debit() operations.
+
+AccountingPeriod: This concept represents the period over which we can 'see' or operate on an account - this may be e.g. DAY, MONTH, YEAR, SEMESTER or a more generic period.
+
+In operation we would expect an authority to allocate funds to an account for each of several accounting periods - the client could then withdraw funds only from the 'current' period ? How can we enforce this - does the AccountingModel or its representative (the AccountingPeriod) 'know' the current time ? - this implies a need to access the TimeModel.
+
+ClientAccountingPeriodView: This interface allows a client to check balance and withdraw from an accounting period. We need to enforce time constrained access for withdrawal operations - this may point towards a fixed implementation - we would then need to provide a mechanism for callback to some class (AccountUpdateListener) which would record (persist) any transactions.
+
+ManagerAccountingPeriodView: A manager extension which allows credit operations.
+
+
+
+Example of usage:
+
+ClientAccountingPeriodView {
+
+  public void withdraw(double amount, long time, String ref) throws 
+	 AccountOverdrawnException, AccountNotAccessibleException {
+
+	 if (time < start || time > end) throw new 
+	          AccountNotAccessibleException("Time:"+time+
+					        " is outside view period: "+start+" to "+end);
+
+         if (balance < amount) throw new
+	         AccountOverdrawnException("Insufficent funds: "+balance+" for withdrawl: "+amount);
+
+ 
+         balance -= amount;
+
+         AccountTransaction trans = new AccountTransaction(accountId, amount, AccountTransaction.DEBIT, time, ref);
+
+         updateListener.accountUpdated(trans);
+
+   }
+
+}
+
+MAPV should however be able to withdraw funds from any period not just the current one (re- TimeModel).

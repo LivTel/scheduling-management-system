@@ -1,0 +1,30 @@
+% ----------------------------------------------------------------------------------
+% ASTROMETRY
+% ----------------------------------------------------------------------------------
+\section{Astrometry} 
+We need a better astrometry implemntation. Probably a singleton with static methods. The main inputs should be the ITarget class which represents all sorts of targets and the ISite information which describes a site (on the Earth or possibly off it).
+
+We would have methods like:- \textsf{getAzimuth(ITarget, ISite, time)}, \textsf{getTrackingRateRA(ITarget, ISite, time)} , \textsf{getRA(ITarget, time)}. This approach contrasts with the approach used at the moment - here we use the position class returned from the various source types to calculate instantaneous sky position then extract az, alt etc from this - 
+
+\begin{verbatim}
+// Note we are using a bog-standard Observation here.
+// Sources can be one of:-
+// ExtraSolarSource, Comet, MinorPlanet, etc..
+
+Observation obs    = nextObs; 
+Source      source = obs.getSource();       
+Position    posn   = source.getPosition();
+double      az     = posn.getAzimuth(epoch);
+\end{verbatim}
+
+It should be noted that the getPosition() call generally makes use of additional astrometry calls to Slalib so we are just hidding this - it also means that when we use positions in an environment where the Slalib is not available we run the risk of execeptions due to the missing library. The new scheme means that ITarget just contains a description of the target's space position which can be used to find its actual sky position at some epoch.
+
+\begin{verbatim}
+// Note we are using a StructuredObservation here.
+// Targets can be one of:- 
+// ExtraSolarTarget, PlanetElementsTarget, CometElementsTarget, MPETarget, JPLHorizonsTarget, etc..
+
+ISObservation obs    = nextObs();
+ITarget       target = obs.getTarget();      
+double        az     = Astro.getTopocentricAzimuth(target, site, epoch);
+\end{verbatim}

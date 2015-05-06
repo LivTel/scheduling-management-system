@@ -1,0 +1,39 @@
+% ----------------------------------------------------------------------------------
+% ENVIRONMENT MODEL
+% ----------------------------------------------------------------------------------
+\section{Environment Model}
+This (read-only access) model is intended to provide information about the telescope, site and atmospheric variables. It should allow a PDA or other components of the SMS to interrogate it about current, past and future predicted values and statistics for these variables. The list of variables is not fixed i.e. we could add extra variables at some later point - this poses some problems in terms of defining the interface. We have the option to hard-code the accessor signatures or to make them available through a keyword scheme via some type of \textsf{EnvironmentVariable} interface.
+
+\begin{description}
+\item[hard-coded] Methods would be inluded in the interface to allow all statistical information e.g. \emph{Mean, StandardDeviation, Maximum, Minimum, Median, etc} for each of the valid environment variables $X$ to be extracted. This would yield method signatures like \textsf{getX(), getMeanX(), getMaximumX()} as in the following example:-
+
+\textsf{double skybright = env.getSkyBrightness(long time)}
+
+\item[keyed] Here we provide keys for each valid environment variables $X$ - ideally we should also provide constants for these keys to avoid any typos.
+
+\textsf{EnvironmentVariable skyVar = env.getVariable(EnvironmentVariable.SKY\_BRIGHTNESS)}
+\textsf{double skybright = skyVar.getValue(long time)}
+
+\item[delegated] This variant of the keyed version allows the Environment Model to provide the statistics directly but via either its own calculated values or by delegating to \textsf{EnvironmentVariables}.
+
+\textsf{double skybright = env.getAverage(EnvironmentVariable.SKY\_BRIGHTNESS, time)}
+
+\end{description}
+
+The hard-coded scheme has the advantage of simplicity and intuitiveness but suffers when we decide to add new variables or new types of statistical output, e.g. if we want the capability to extract StandardDeviation we would have to add methods like \textsf{getStandardDeviationSeeing(long~t1,~long~t2)} for all variables and enforce these in all implementations of the interface. The keyed scheme on the other hand has the advantage of ease of upgrade i.e. there is no work in terms of the interface to do to add a new variable, we simply have to provide an extra key. To add an extra accessor e.g. \emph{StandardDeviation}, we need only add the one method signature to the \textsf{EnvironmentVariable} interface, however we must then implement it for all concrete implementations. The delegated variant infact in some ways gives the best of both worlds - the interface is small - i.e. we dont need to keep adding new methods as new variables are defined and we are free to use \textsf{EnvironmentVariables} behind the scenes if we want to but are not constrained to do so.
+
+\subsection{Implementations}
+There are many ways we can implement this model depending on whether we want to generate data using some parameterized model or use stored historic data or by collating live updates. 
+
+Parameterized model.
+Here we simply provide some parameters which can be used to calculate the value of the variables at various times. A simple example might be a sine wave for which we provide a \emph{start time}, \emph{period}, \emph{average} and \emph{amplitude} and perhaps an additional random amplitude variation, we can then calculate the value at any time along with statistics - which could be calculated using the known properties of the function thus reducing calculation effort.
+
+Historic model.
+Values are simply read from a file. Interpolation is used to compute in-between values.
+
+Live updating model.
+With this class of \textsf{EnvironmentModel} we need a way for an external source to feed updates into the model. We also need some way for it to extract statistical results. Since the source may be running in an external JVM we may need to provide a server (for socket based communications) or an RMI hook.
+
+
+\section{Updateable Environment Model}
+This model provides the interface to allow updating of environment data. It would be used for a live feed implementaion of \textsf{EnvironmentModel}.

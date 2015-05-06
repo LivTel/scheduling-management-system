@@ -1,0 +1,37 @@
+ScheduleDespatcher {
+    
+    Despatcher (execModel, scoreModel, selector, histModel, phase2Cache)
+
+    bestGroupMetrics(time, seeing) {
+
+        candidates = new list
+
+        foreach (proposal in phase2Cache) {
+
+	    if (proposal active and has funds) {
+
+	        foreach (group in proposal) {
+
+		   last = histModel.lastExec(group);
+
+		   if (execModel.canDo(group, time, seeing, last)) {
+
+		       metric = scoringModel.scoreGroup(group, time, seeing, last)
+		
+		       candidates.add(metric)
+
+                   }
+
+                } next group
+
+	     }
+
+        } next proposal
+
+	best = selector.select(candidates)
+
+	return best
+
+    }
+
+}

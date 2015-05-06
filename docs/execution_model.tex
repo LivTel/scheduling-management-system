@@ -1,0 +1,65 @@
+% ----------------------------------------------------------------------------------
+% EXECUTION MODEL
+% ----------------------------------------------------------------------------------
+\section{Execution Model} 
+A model to represent an interpretation of the capabilties of the execution environment. This model should supply details of what the executor can do and how long it will take. For elucidation of timing information and capabilities, the model should contain details of the telescope - where it is pointing at a given time, how fast it moves, its movement range, its range of instruments and their configuration capabilities and rates, details of the execution software - the RCS and how it will decompose a job supplied to it including parallelism and a model of how the TCS will handle the activities requested by the RCS. 
+
+Some of the information is likely in reality to be static - e.g. axis limits, other information will change more or less continuously - e.g. axis position. Some information may change intermittently either during a night or from night to night - e.g. instrument/autoguider availability. Other information may need to be deduced either internally or supplied by an external source - e.g. autoguider aquisition times.
+
+It is likely that a real implementation of this model would need regular updates from the RCS and/or an update at start of night. I would therefore expect to need an \textsf{UpdateableExecutionModel} interface or something similar to allow the RCS to update the model via sockets or RMI. The model may in fact be implemented as part of the RCS and thus internally updateable, in such a case it would need to present an external RMI interface for the scheduler and any other systems which required its data.
+
+Some questions we want the \textsf{ExecutionModel} to answer.
+
+\begin{itemize}
+\item \emph{How long will this group take to execute (min, max,average, expected)?}
+\item \emph{How soon can you start this group?}
+\item \emph{How long will this group take to setup?}
+\item \emph{Can you do/are you capable of executing group $x$ (starting) at time $t$}
+\item \emph{What will be the total slew/rotate cost for group $x$?}
+\item \emph{What will be the total configuration cost for group $x$?}
+\end{itemize}
+
+Some methods that might be implemented:-
+
+\textsf{getExpectedExecutionTime(ISGroup)}, \textsf{getEarliestStartTime(ISGroup)},\textsf{getConfigurationTime(ISGroup)}. We might alternatively want to defer to aa proxy which returns some execution statistics via say \textsf{getExecutionStatistics(ISGroup group, long time):ExecutionStatistics} then calls to this object like:- \textsf{ExecutionStatistics.getMaximumSlewTime(), getSetupTime(), isFeasible()}. It is 6 and 2x3s which we use but the second alternative allows us to write multiple ExecModels with likely just a single implementation of the ExecutionStatistics e.g. DefaultExecutionStatistics. We get a simple interface to implement (linked to various other modules ICM, TCM, simulator) and likely just a single container for the results. If we add new params to the ExecStatistics we just need a new setter and getter in its (single) implementation and we can eventually get round to setting them up in the ExecModels without breaking the system.
+
+\subsection{Telescope}
+We need a variety of telescope information available to the ExecutionModel. These can be split into the following main categories:-
+\begin{itemize}
+\item Continuously varying data.
+ \begin{itemize}
+ \item Current axes positions and demands.
+ \item Current enclosure state.
+ \item Current focus offset.
+ \end{itemize}
+\item Slowly varying data.
+ \begin{itemize}
+ \item Enclosure low limit.
+ \item Autoguider availability.
+ \item Axis limits.
+ \end{itemize}
+\item Ephemeral data.
+  \begin{itemize}
+  \item Axis tracking rates.
+  \item Focus movement rate.
+  \item Assignement of instruments to ports.
+  \end{itemize}
+\end{itemize}
+
+I envisage 3 seperate telescope interfaces:-
+
+\begin{description}
+\item [TelescopeController] Allows control commands to be sent - this is the interface which the RCS will use to control the telescope - i.e. what is currently performed via RCS\_TCS commands and the CIL proxy layer by JMSTasks: 
+e.g. \textsf{slew(Target)}, \textsf{focus(10.4)} etc.
+\item [TelescopeStatus] Returns the current states and positions of axes and other mechanisms - this will be used by the new status monitor clients in the SCM seperately from the RCS:
+e.g. \textsf{getAzimuthPosition()}, \textsf{getRotatorMode()}.
+\item [TelescopeInfo] Returns ephemeral information: e.g. \textsf{getAzimuthTrackingRate()}, \textsf{listPortAssignemnts(}).
+\end{description}
+
+\subsection{Instruments}
+Like the telescope we need access to the various instrument control systems in order to control the instruments and to obtain instananeos and ephemeral status information. I envisage a set of 3 interfaces similar to those for the telescope.
+\begin{description}
+\item [InstrumentController] Allows control commands to be sent: e.g. \textsf{configure(InstConfig)}, \textsf{expose(IExposure)}.
+\item [InstrumentStatus] Returns the current state of the instrument: e.g. \textsf{getConfig()}, \textsf{getChipTemperature()}.
+\item [InstrumentInfo] Returns ephemeral information: e.g. \textsf{listValidConfigs()}, \textsf{isValidConfig(InstConfig)}, \textsf{getInterlaceMode()}.
+\end{description}

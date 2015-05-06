@@ -32,6 +32,7 @@ import ngat.phase2.ITimingConstraint;
 import ngat.phase2.XFixedTimingConstraint;
 import ngat.phase2.XMinimumIntervalTimingConstraint;
 import ngat.phase2.XMonitorTimingConstraint;
+import ngat.phase2.XPhotometricityConstraint;
 import ngat.phase2.XSeeingConstraint;
 import ngat.phase2.XSkyBrightnessConstraint;
 import ngat.phase2.XTimePeriod;
@@ -660,8 +661,39 @@ public class BasicDespatchScheduler extends UnicastRemoteObject implements
 
 					long fgtime = (start + end) / 2; // use midpoint
 
+					int photom = EnvironmentSnapshot.EXTINCTION_PHOTOM;
+					try {
+						ObservingConstraintAdapter oca = new ObservingConstraintAdapter(
+								group);
+						XPhotometricityConstraint photConstr = oca
+								.getPhotometricityConstraint();
+
+						if (photConstr != null) {
+
+							int photomActual = photConstr
+									.getPhotometricityCategory();
+							if (photomActual == XPhotometricityConstraint.NON_PHOTOMETRIC) {
+								photom = EnvironmentSnapshot.EXTINCTION_SPECTRO;
+							} else if (photomActual == XPhotometricityConstraint.PHOTOMETRIC) {
+								photom = EnvironmentSnapshot.EXTINCTION_PHOTOM;
+							}
+
+						}
+
+					} catch (Exception e) {
+						logger.create()
+								.block("lookAheadFixedGroupDisruptors")
+								.error()
+								.level(3)
+								.msg("Group: " + group.getName()
+										+ " error accessing constraints: " + e)
+								.send();
+						continue;
+					}
+
 					EnvironmentSnapshot optenv = new EnvironmentSnapshot(
-							fgtime, 0.25, EnvironmentSnapshot.EXTINCTION_PHOTOM);
+							fgtime, 0.25, photom);
+
 					ExecutionHistorySynopsis fghist = hsm
 							.getExecutionHistorySynopsis(group.getID(), time);
 
@@ -880,7 +912,8 @@ public class BasicDespatchScheduler extends UnicastRemoteObject implements
 
 		double random = Math.random();
 
-		double score = 0.5 * escore + 0.5 * pscore + 0.15 * smscore + 0.05 * random;
+		double score = 0.5 * escore + 0.5 * pscore + 0.15 * smscore + 0.05
+				* random;
 		ss.setScore(score);
 
 		String path = (group.getTag() != null ? group.getTag().getName()
