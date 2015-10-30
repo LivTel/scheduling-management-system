@@ -925,8 +925,12 @@ public class BasicDespatchScheduler extends UnicastRemoteObject implements
 				+ (group.getProposal() != null ? group.getProposal().getName()
 						: "UNK_PRP");
 
+		//String result = String
+		//		.format("Scoring group: [%35.35s..] [%20.20s..] %2.2f %2.2f %2.2f %2.2f -> %2.4f ",
+		//				path, group.getName(), escore, pscore, smscore, random,
+		//				score);
 		String result = String
-				.format("Scoring group: [%35.35s..] [%20.20s..] %2.2f %2.2f %2.2f %2.2f -> %2.4f ",
+				.format("Scoring group: [%35.35s..] [%64.64s..] %2.2f %2.2f %2.2f %2.2f -> %2.4f ",
 						path, group.getName(), escore, pscore, smscore, random,
 						score);
 
