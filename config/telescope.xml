@@ -43,9 +43,9 @@
        <reboot> 2 </reboot>
     </instrument>
     
-    <instrument name="RAPTOR">
-       <alias> RAPTOR </alias>
-       <mount> /mnt/raptor-image </mount>
+    <instrument name="LIRIC">
+       <alias> LIRIC </alias>
+       <mount> /mnt/liric-image </mount>
        <port> 3 </port>
        <reboot> 2 </reboot>
     </instrument>
