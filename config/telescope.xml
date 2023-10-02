@@ -21,15 +21,33 @@
        <reboot> 2 </reboot>
     </instrument> -->
 
+    <!--
     <instrument name="RINGO3">
        <alias> RINGO3 </alias>
-
-<!-- THIS IS WRONG R3 has 2 MOUNT POINTS BUT WE CANT COPE WITH THAT CONCEPT
-    SO TOCS WILL NOT WORK VERY WELL WITH RINGO3 -->
-
        <mount> /mnt/ringo3-image-temp </mount>
        <port> 7 </port>
        <reboot> 1 </reboot>
+    </instrument>
+    -->
+    <instrument name="MOPTOP">
+       <alias> MOPTOP </alias>
+       <mount> /mnt/moptop-image </mount>
+       <port> 7 </port>
+       <reboot> 2 </reboot>
+    </instrument>
+
+    <instrument name="SPRAT">
+       <alias> SPRAT </alias>
+       <mount> /mnt/rise-image </mount>
+       <port> 6 </port>
+       <reboot> 2 </reboot>
+    </instrument>
+    
+    <instrument name="LIRIC">
+       <alias> LIRIC </alias>
+       <mount> /mnt/liric-image </mount>
+       <port> 3 </port>
+       <reboot> 2 </reboot>
     </instrument>
 
     <instrument name="RISE">
@@ -72,10 +90,12 @@
   </guidance>
 
   <adjuster>
-  <!--  <config> /occ/rcs/config/tweaks.dat </config> --> 
-  <config> /occ/rcs/config/tweak_minus.dat </config> 	<!-- ROTATIONAL OFFSET changed +46.3deg for  IO:O -->
-  <!--  <config> /occ/rcs/config/tweak_zero.dat </config> --> <!-- As derived and correct on RATCam -->
-  <!--  <config> /occ/rcs/config/tweak_plus.dat </config>  --> <!-- Rotated but IO:O, but the wrong way -->
+  <!-- <config> /occ/rcs/config/tweaks.dat </config> --> 
+  <!-- <config> /occ/rcs/config/tweak_minus.dat </config> -->	<!-- ROTATIONAL OFFSET changed +46.3deg for  IO:O -->
+  <!-- <config> /occ/rcs/config/tweak_zero.dat </config> --> <!-- As derived and correct on RATCam -->
+  <!-- <config> /occ/rcs/config/tweak_plus.dat </config>  --> <!-- Rotated but IO:O, but the wrong way -->
+  <!-- <config> /occ/rcs/config/tweaks_20150412_for_ioo.dat </config> --> <!-- Derived on ratcam. Rotated for IO:O. Then modified by bug 2259, comment 17-19 -->
+  <config> /occ/rcs/config/tweaks_20160201_for_ioo_p.dat </config> <!-- Compounded offsets on top of tweaks_20150412_for_ioo.dat after Dec 2015 TPOINT -->
   </adjuster>
 
 
