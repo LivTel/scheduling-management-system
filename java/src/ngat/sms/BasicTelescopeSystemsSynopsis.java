@@ -420,10 +420,14 @@ public class BasicTelescopeSystemsSynopsis implements TelescopeSystemsSynopsis, 
 
 
 
-	public void configure(ConfigurationProperties config) throws Exception {
+	public void configure(ConfigurationProperties config) throws Exception
+	{
 		domeLimit = Math.toRadians(config.getDoubleValue("dome.limit", 25.0));
+		System.err.println("BTS:config: dome limit:"+domeLimit+"");
 		zazSize = Math.toRadians(config.getDoubleValue("zaz.limit", 2.0));
+		System.err.println("BTS:config: zaz size:"+zazSize+"");
 		agTempMaxLimit = config.getDoubleValue("ag.temp.hi.limit", 0.0);
+		System.err.println("BTS:config: Autoguider temperature max limit:"+agTempMaxLimit+"");
 
 		// TODO replace ag temp limit with these values so we can signal an InstrumentStatus type reply
 		
@@ -549,14 +553,22 @@ public class BasicTelescopeSystemsSynopsis implements TelescopeSystemsSynopsis, 
 						tempGetCommand.getParsedReplyOK();
 						Date timeStamp = tempGetCommand.getTimestamp();
 						double ccdTemp = tempGetCommand.getCCDTemperature();
-						System.err
-								.printf("BTS:AG_StatusCollator::StatusTemperatureGetCommand: %tF %tT %tZ, CCD Temperature: %4.2f from %tF %tT \n",
-										time, time, time, ccdTemp, timeStamp, timeStamp);
+						System.err.printf("BTS:AG_StatusCollator::StatusTemperatureGetCommand: %tF %tT %tZ, CCD Temperature: %4.2f from %tF %tT \n",
+								  time, time, time, ccdTemp, timeStamp, timeStamp);
 
 						// check the temperature is below max value (-20C ?)
-						if (ccdTemp < agTempMaxLimit) {
+						if (ccdTemp < agTempMaxLimit)
+						{
+							System.err.println("BTS:AG_StatusCollator::Autoguider temperature "+
+									   ccdTemp+"C is colder than maximimum limit "+
+									   agTempMaxLimit+".");
 							updateAgTemp(true);
-						} else {
+						}
+						else
+						{
+							System.err.println("BTS:AG_StatusCollator::Autoguider temperature "+
+									   ccdTemp+"C is WARMER than maximimum limit "+
+									   agTempMaxLimit+".");
 							updateAgTemp(false);
 						}
 						
