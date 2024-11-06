@@ -29,6 +29,8 @@ cd /occ/bin
 
 set PID = $DEPLOY_TMP/smp.pid
 
+set IN = $1 
+echo "smp: IN = ${IN}"
 
 switch ($IN)
 

@@ -23,6 +23,8 @@ set PRUNE
 
 set PID = $DEPLOY_TMP/sched.pid
 
+set IN = $1 
+echo "sched: IN = ${IN}"
 
 switch ($IN)
 
