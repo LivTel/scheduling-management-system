@@ -14,21 +14,24 @@
 	<offset> 104.0 </offset>
       </rotator> 
 
-    <!--    <instrument name="RATCAM">
+<!--
+    <instrument name="RATCAM">
        <alias> RATCAM </alias>
        <mount> /mnt/rat-image </mount>
        <port> 3 </port>
        <reboot> 2 </reboot>
-    </instrument> -->
+    </instrument> 
+-->
 
-    <!--
+<!--
     <instrument name="RINGO3">
        <alias> RINGO3 </alias>
        <mount> /mnt/ringo3-image-temp </mount>
        <port> 7 </port>
        <reboot> 1 </reboot>
     </instrument>
-    -->
+-->
+
     <instrument name="MOPTOP">
        <alias> MOPTOP </alias>
        <mount> /mnt/moptop-image </mount>
@@ -38,7 +41,7 @@
 
     <instrument name="SPRAT">
        <alias> SPRAT </alias>
-       <mount> /mnt/rise-image </mount>
+       <mount> /mnt/sprat-image </mount>
        <port> 6 </port>
        <reboot> 2 </reboot>
     </instrument>
@@ -50,6 +53,13 @@
        <reboot> 2 </reboot>
     </instrument>
 
+   <instrument name="LOCI">
+       <alias> LOCI  </alias>
+       <mount> /mnt/loci-image </mount>
+       <port> 0 </port> <!-- not yet known -->
+       <reboot> 2 </reboot>
+    </instrument>
+
     <instrument name="RISE">
        <alias> RISE </alias>
        <mount> /mnt/rise-image </mount>
@@ -57,18 +67,20 @@
        <reboot> 2 </reboot>
     </instrument>
 
-<!--    <instrument name="IO:THOR">
+<!--
+    <instrument name="IO:THOR">
        <alias> THOR </alias>
        <mount> /mnt/thor-image </mount>
        <port> 0 </port>
        <reboot> 2 </reboot>
-    </instrument> -->
+    </instrument> 
+-->
 
    <instrument name="IO:O">
        <alias> IOO  </alias>
        <mount> /mnt/o-image </mount>
        <port> 0 </port>
-       <reboot> 2 </reboot>
+       <reboot> 0 </reboot>
     </instrument>
 
     <instrument name="FRODO">
