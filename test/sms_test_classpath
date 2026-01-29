@@ -1,0 +1,8 @@
+foreach class ( /home/dev/bin/javalib/ngat_message_base.jar /home/dev/bin/javalib/ngat_message_sms.jar /home/dev/bin/javalib/ngat_net.jar /home/dev/bin/javalib/ngat_util.jar /home/dev/bin/javalib/ngat_util_logging.jar /home/dev/bin/javalib/ngat_sms.jar )
+    echo $CLASSPATH | grep $class > /dev/null
+    if ( $status ) then
+#	echo -n "adding $class to CLASSPATH..."
+	setenv CLASSPATH "${CLASSPATH}":"${class}"
+#	echo "done"
+    endif
+end
