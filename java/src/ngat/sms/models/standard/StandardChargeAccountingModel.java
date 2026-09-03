@@ -43,6 +43,7 @@ public class StandardChargeAccountingModel implements ChargeAccountingModel {
     public static final double IO_O_DEFAULT_READOUT_TIME = 19000.0;
 	public static final double GENERIC_DEFAULT_READOUT_TIME = 10000.0;
     public static final double IO_I_DEFAULT_READOUT_TIME = 15000.0;
+    public static final double LIRIC_READOUT_TIME = 10;
 
 	private volatile IInstrumentConfig lastConfig = null;
 
@@ -306,15 +307,17 @@ public class StandardChargeAccountingModel implements ChargeAccountingModel {
 		} else if (instName.equalsIgnoreCase("MEABURN")) {
 			return LOWRES_SPEC_READOUT_TIME;
 		} else if (instName.equalsIgnoreCase("IO:THOR")) {
-		    return IO_THOR_DEFAULT_READOUT_TIME;
+			return IO_THOR_DEFAULT_READOUT_TIME;
 		} else if (instName.equalsIgnoreCase("IO:O")) {
-		    return IO_O_DEFAULT_READOUT_TIME;
+			return IO_O_DEFAULT_READOUT_TIME;
 		} else if (instName.equalsIgnoreCase("RISE")) {
 			return RISE_DEFAULT_READOUT_TIME;
 		} else if (instName.toUpperCase().startsWith("FRODO")) {
 			return FRODO_DEFAULT_READOUT_TIME;
 		} else if (instName.equalsIgnoreCase("IO:I")) {
-		    return IO_I_DEFAULT_READOUT_TIME;
+			return IO_I_DEFAULT_READOUT_TIME;
+		} else if (instName.equalsIgnoreCase("LIRIC")) {
+			return LIRIC_READOUT_TIME;
 		} else
 			return GENERIC_DEFAULT_READOUT_TIME;
 	}
