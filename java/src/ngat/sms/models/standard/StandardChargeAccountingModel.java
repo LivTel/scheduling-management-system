@@ -43,7 +43,7 @@ public class StandardChargeAccountingModel implements ChargeAccountingModel {
     public static final double IO_O_DEFAULT_READOUT_TIME = 19000.0;
 	public static final double GENERIC_DEFAULT_READOUT_TIME = 10000.0;
     public static final double IO_I_DEFAULT_READOUT_TIME = 15000.0;
-    public static final double LIRIC_READOUT_TIME = 10;
+    public static final double LIRIC_DEFAULT_READOUT_TIME = 10;
 
 	private volatile IInstrumentConfig lastConfig = null;
 
@@ -257,14 +257,14 @@ public class StandardChargeAccountingModel implements ChargeAccountingModel {
 			double exp = xmult.getExposureTime();
 			double count = xmult.getRepeatCount();
 
-			return count * (exp + calculateReadoutTime(config));
+			return count * (exp + calculateReadoutTime(config,(int)exp));
 			
 		} else if 
 			(exposure instanceof XPeriodExposure) {
 		    XPeriodExposure xtrig = (XPeriodExposure)exposure;
 		    double duration = xtrig.getExposureTime();
 		    
-		    return duration + calculateReadoutTime(config);
+		    return duration + calculateReadoutTime(config,(int)duration);
 		} else if
 			(exposure instanceof XPeriodRunAtExposure) {
 			XPeriodRunAtExposure xper = (XPeriodRunAtExposure)exposure;
@@ -283,8 +283,15 @@ public class StandardChargeAccountingModel implements ChargeAccountingModel {
 	    return DEFAULT_CONFIG_TIME;
 	}
 
-	/** Calculate readout times for different configs. */
-	private double calculateReadoutTime(IInstrumentConfig config) {
+	/**
+	 * Calculate readout times for different configs.
+	 * @param config The instrument config to compute a readout time for.
+	 * @param exposureLength The frame exposure length that this config is being used for, in milliseconds.
+	 *        We shouldn't need this,but LIRIC readout times (really per exposure overheads)
+	 *        scale with exposure length due to the variable number of coadd reads.
+	 * @return A readout time (really a per-exposure overhead time) , as a double in milliseconds.
+	 */
+	private double calculateReadoutTime(IInstrumentConfig config,int exposureLength) {
 		if (config == null)
 			return 1000.0;
 		// TODO A fudge to workround problem in migration/extraction with
@@ -317,7 +324,50 @@ public class StandardChargeAccountingModel implements ChargeAccountingModel {
 		} else if (instName.equalsIgnoreCase("IO:I")) {
 			return IO_I_DEFAULT_READOUT_TIME;
 		} else if (instName.equalsIgnoreCase("LIRIC")) {
-			return LIRIC_READOUT_TIME;
+			XLiricInstrumentConfig liricConfig = null;
+			int nudgematicOverhead;
+			int coaddOverhead;
+			
+			if(xcfg instanceof XLiricInstrumentConfig)
+			{
+				liricConfig = (XLiricInstrumentConfig)xcfg;
+				// nudgematic takes aroung 1600-1700ms on overage, see Fault #2962 for details
+				switch(liricConfig.getNudgematicOffsetSize())
+				{
+					case XLiricInstrumentConfig.NUDGEMATIC_OFFSET_SIZE_SMALL:
+					case XLiricInstrumentConfig.NUDGEMATIC_OFFSET_SIZE_LARGE:
+						nudgematicOverhead = 1700;
+						break;
+					// We take (potentially) a long time to drive the nudgematic to the centre here
+					// Then ~140ms per frame checking it's still in position
+					// (by driving it to the same position)
+					case XLiricInstrumentConfig.NUDGEMATIC_OFFSET_SIZE_NONE:
+					default:
+						nudgematicOverhead = 140;
+						break;
+				}
+				// coadd overheads are 10ms per read, see Fault #2962 for details
+				// there are 10 reads per second for 100ms coadds
+				// and 1 read per second for a 1000ms coadd
+				// Unfortunately this means the computed readout time for LIRIC is depenedant
+				// on the exposure length
+				switch(liricConfig.getCoaddExposureLength())
+				{
+					case 100:
+						coaddOverhead = 100*(exposureLength/1000);
+						break;
+					case 1000:
+					default:
+						coaddOverhead = 10*(exposureLength/1000);
+						break;
+				}
+				// saving to disk each frame takes ~100ms, see Fault #2962 for details
+				// Per-Frame FITS headers take ~790ms, mainly monitoring enviromental temperatures,
+				// see Fault #2962 for details
+				return 100+790+nudgematicOverhead+coaddOverhead;
+			}
+			else
+				return LIRIC_DEFAULT_READOUT_TIME;
 		} else
 			return GENERIC_DEFAULT_READOUT_TIME;
 	}
